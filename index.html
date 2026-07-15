@@ -423,10 +423,11 @@ async function createUser(){
   logEl.textContent = '';
   if(!email || !password || password.length<6){ logEl.textContent = '⚠ Vyplň e-mail a heslo (aspoň 6 znaků).'; return; }
 
-  // Dočasný samostatný klient — aby signUp nepřepsal přihlášení manažera v hlavním klientovi
+  // Dočasný samostatný klient — persistSession:false = nikdy se nedotkne uloženého přihlášení manažera
   const tempClient = window.supabase.createClient(
     localStorage.getItem('planovac_sb_url'),
-    localStorage.getItem('planovac_sb_key')
+    localStorage.getItem('planovac_sb_key'),
+    { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }
   );
   const { data, error } = await tempClient.auth.signUp({ email, password });
   if(error){ logEl.innerHTML = `⚠ Vytvoření účtu selhalo: ${error.message}`; return; }
