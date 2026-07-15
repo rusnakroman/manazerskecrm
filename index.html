@@ -1,0 +1,2957 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Plánovač výsledků týmu</title>
+<style>
+  :root{
+    --cyan:#0099CC; --dark:#003366; --green:#82B800; --orange:#FF6000;
+    --bg:#f4f6f8; --border:#cfd6dc;
+  }
+  *{box-sizing:border-box;}
+  body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:#1a1a1a;margin:0;padding:0;}
+  header{background:var(--dark);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+  header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.3px;}
+  header .yearbox{display:flex;align-items:center;gap:6px;font-size:13px;}
+  header input{width:70px;padding:4px 6px;border-radius:4px;border:none;text-align:center;font-weight:700;}
+  .tabs{display:flex;flex-direction:column;gap:2px;background:#fff;border-bottom:2px solid var(--border);padding:6px 24px;}
+  .tab-group{display:flex;align-items:center;gap:2px;flex-wrap:wrap;}
+  .tab-group-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#8a97a3;font-weight:800;margin-right:8px;white-space:nowrap;min-width:150px;}
+  .tab{padding:9px 14px;cursor:pointer;font-weight:700;color:#556;border-bottom:3px solid transparent;white-space:nowrap;font-size:13px;user-select:none;border-radius:4px 4px 0 0;}
+  .tab.active{color:var(--cyan);border-bottom-color:var(--cyan);background:#f0f9fc;}
+  .tab:hover{color:var(--dark);}
+  .tabdesc{font-style:italic;color:#667788;font-size:13px;margin:0 0 16px;}
+  /* Zvýraznění řádku a sloupce v mřížkách pro zadávání (Skutečnost) — snazší nalezení buňky */
+  table.gridtable tr:focus-within td{background:#fff6d8!important;}
+  table.gridtable tr:focus-within td:first-child{background:#ffe9a8!important;font-weight:700;}
+  table.gridtable td.cur-month, table.gridtable th.cur-month{background:#d6f0f7!important;}
+  table.gridtable tr:focus-within td.cur-month{background:#ffd66b!important;}
+  /* Živé zvýraznění sloupce (hlavička) podle toho, kde má uživatel focus — sloupce 2..13 = měsíce */
+  table.gridtable:has(tbody tr td:nth-child(1) input:focus) thead th:nth-child(2){background:var(--orange)!important;color:#fff;}
+  table.gridtable:has(tbody tr td:nth-child(2) input:focus) thead th:nth-child(3){background:var(--orange)!important;color:#fff;}
+  table.gridtable:has(tbody tr td:nth-child(3) input:focus) thead th:nth-child(4){background:var(--orange)!important;color:#fff;}
+  table.gridtable:has(tbody tr td:nth-child(4) input:focus) thead th:nth-child(5){background:var(--orange)!important;color:#fff;}
+  table.gridtable:has(tbody tr td:nth-child(5) input:focus) thead th:nth-child(6){background:var(--orange)!important;color:#fff;}
+  table.gridtable:has(tbody tr td:nth-child(6) input:focus) thead th:nth-child(7){background:var(--orange)!important;color:#fff;}
+  table.gridtable:has(tbody tr td:nth-child(7) input:focus) thead th:nth-child(8){background:var(--orange)!important;color:#fff;}
+  table.gridtable:has(tbody tr td:nth-child(8) input:focus) thead th:nth-child(9){background:var(--orange)!important;color:#fff;}
+  table.gridtable:has(tbody tr td:nth-child(9) input:focus) thead th:nth-child(10){background:var(--orange)!important;color:#fff;}
+  table.gridtable:has(tbody tr td:nth-child(10) input:focus) thead th:nth-child(11){background:var(--orange)!important;color:#fff;}
+  table.gridtable:has(tbody tr td:nth-child(11) input:focus) thead th:nth-child(12){background:var(--orange)!important;color:#fff;}
+  table.gridtable:has(tbody tr td:nth-child(12) input:focus) thead th:nth-child(13){background:var(--orange)!important;color:#fff;}
+  main{padding:20px 24px 60px;max-width:1500px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin-bottom:18px;}
+  .card h2{font-size:15px;color:var(--dark);margin:0 0 12px;text-transform:uppercase;letter-spacing:.3px;}
+  .card h3{font-size:13px;color:var(--cyan);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.3px;}
+  table{border-collapse:collapse;width:100%;background:#fff;font-size:12.5px;}
+  th{background:var(--dark);color:#fff;padding:10px 8px;text-align:right;font-weight:700;white-space:nowrap;}
+  th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:inherit;}
+  td{padding:9px 8px;border-bottom:1px solid var(--border);text-align:right;line-height:1.4;}
+  tbody tr:nth-child(even) td{background:#f4f7f9;}
+  tbody tr:hover td{background:#eaf3f8;}
+  tr.total td{font-weight:700;background:#e8f4f9!important;border-top:2px solid var(--cyan);}
+  input[type=number]{width:100%;min-width:56px;border:1px solid var(--border);border-radius:4px;padding:4px 3px;text-align:right;font-size:12.5px;}
+  input[type=text]{width:100%;border:1px solid var(--border);border-radius:4px;padding:6px 8px;text-align:left;font-size:13px;}
+  button{background:var(--cyan);color:#fff;border:none;border-radius:5px;padding:8px 14px;cursor:pointer;font-weight:700;font-size:13px;}
+  button:hover{background:#007fa8;}
+  button.secondary{background:#fff;color:var(--dark);border:1px solid var(--border);}
+  button.secondary:hover{background:#f0f3f5;}
+  button.danger{background:#fff;color:#c0392b;border:1px solid #e2b4ac;}
+  button.danger:hover{background:#fdf1ef;}
+  button:disabled{opacity:.45;cursor:not-allowed;}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:700;}
+  .badge.ended{background:#ffe4e0;color:#c0392b;}
+  .badge.active{background:#e6f4d9;color:#5a7a00;}
+  .badge.start{background:#e0f0fa;color:#0077a3;}
+  .sum-ok{color:var(--green);font-weight:700;}
+  .sum-warn{color:#b5850a;font-weight:700;}
+  .sum-bad{color:#c0392b;font-weight:700;}
+  .grid2{display:grid;grid-template-columns:1.1fr 1fr;gap:18px;}
+  @media (max-width:900px){.grid2{grid-template-columns:1fr;}}
+  select{padding:7px;border:1px solid var(--border);border-radius:5px;font-size:13px;background:#fff;}
+  .small{font-size:12px;color:#667788;}
+  .field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;}
+  .field label{font-size:12px;font-weight:700;color:var(--dark);}
+  .tablewrap{overflow-x:auto;}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:#f0f3f5;border-radius:6px;padding:6px 10px;font-size:12.5px;}
+  .checklist{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px;}
+  .checklist label{display:flex;align-items:center;gap:8px;font-size:13px;}
+  .logitem{border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:8px;font-size:12.5px;background:#fbfcfd;}
+  .logitem b{color:var(--dark);}
+  .empty{color:#8a97a3;font-style:italic;padding:20px;text-align:center;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;z-index:999;box-shadow:0 4px 14px rgba(0,0,0,.2);opacity:0;transition:opacity .25s;pointer-events:none;}
+  .toast.show{opacity:1;}
+  .actions-right{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap;}
+  td.blk-plan{background:#e2e8ec !important;}
+  td.bg-ok{background:#8fe08a !important;color:#0a3d0a;font-weight:800;}
+  td.bg-warn{background:#ffc266 !important;color:#5c3a00;font-weight:800;}
+  td.bg-bad{background:#ff8a80 !important;color:#5c0a04;font-weight:800;}
+  td.blk-actual, td.blk-zbyva, td.blk-plneni{background:#fbe9e7 !important;}
+  .predtext{white-space:pre;font-family:'Courier New',monospace;font-size:13px;background:#f7f9fa;border:1px solid var(--border);border-radius:6px;padding:12px 14px;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<div id="authGate" class="card" style="max-width:480px;margin:60px auto;">
+  <h2 style="margin-top:0;">🔒 Přihlášení</h2>
+  <div id="setupBlock">
+    <p class="small">Připojení k databázi (jen napoprvé — uloží se v tomhle prohlížeči).</p>
+    <div class="field"><label>Supabase URL</label><input type="text" id="sbUrl" placeholder="https://xxxx.supabase.co"></div>
+    <div class="field"><label>Anon public key</label><input type="text" id="sbKey" placeholder="eyJhbGciOi..."></div>
+    <button onclick="connectSupabase()">Připojit</button>
+    <p id="setupErr" class="small" style="color:#c0392b;"></p>
+  </div>
+  <div id="loginBlock" style="display:none;">
+    <div class="field"><label>E-mail</label><input type="email" id="loginEmail"></div>
+    <div class="field"><label>Heslo</label><input type="password" id="loginPass"></div>
+    <button onclick="doLogin()">Přihlásit se</button>
+    <p id="loginErr" class="small" style="color:#c0392b;"></p>
+  </div>
+</div>
+
+<div id="appRoot" style="display:none;">
+<header>
+  <h1>📊 Plánovač výsledků týmu</h1>
+  <div class="row" style="gap:14px;">
+    <span id="whoami" class="small" style="color:#cfe8f2;"></span>
+    <button class="secondary" style="padding:5px 10px;font-size:12px;" onclick="doLogout()">Odhlásit</button>
+    <span id="saveStatus" class="small" style="color:#cfe8f2;">—</span>
+    <button class="secondary" style="padding:5px 10px;font-size:12px;" onclick="exportBackup()">⬇ Záloha (JSON)</button>
+    <label class="secondary" style="padding:5px 10px;font-size:12px;border-radius:5px;border:1px solid var(--border);background:#fff;cursor:pointer;">
+      ⬆ Obnovit ze zálohy<input type="file" accept=".json" style="display:none;" onchange="importBackup(this.files[0])">
+    </label>
+    <div class="yearbox">Rok <input id="yearInput" type="text" value="2026"></div>
+    <button class="secondary" style="padding:5px 10px;font-size:12px;" onclick="startNewYear()">📅 Založit nový rok</button>
+  </div>
+</header>
+<div class="tabs" id="tabs"></div>
+<main id="main"></main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+/* ============== SUPABASE PŘIHLÁŠENÍ ============== */
+let sb = null;
+let myUser = null;
+let myProfile = null; // {role, advisor_id, full_name}
+
+function connectSupabase(){
+  const url = document.getElementById('sbUrl').value.trim();
+  const key = document.getElementById('sbKey').value.trim();
+  const errEl = document.getElementById('setupErr');
+  errEl.textContent = '';
+  if(!url || !key){ errEl.textContent = 'Vyplň URL i klíč.'; return; }
+  try{
+    sb = window.supabase.createClient(url, key);
+    localStorage.setItem('planovac_sb_url', url);
+    localStorage.setItem('planovac_sb_key', key);
+    document.getElementById('setupBlock').style.display = 'none';
+    checkSession();
+  }catch(e){ errEl.textContent = 'Nepodařilo se připojit: ' + e.message; }
+}
+async function checkSession(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(session){ await afterLogin(); }
+  else{ document.getElementById('loginBlock').style.display = 'block'; }
+}
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginErr');
+  errEl.textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ errEl.textContent = 'Přihlášení selhalo: ' + error.message; return; }
+  await afterLogin();
+}
+async function doLogout(){ await sb.auth.signOut(); location.reload(); }
+
+async function afterLogin(){
+  const { data: { user } } = await sb.auth.getUser();
+  myUser = user;
+  const { data: profile, error } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  if(error || !profile){
+    document.getElementById('authGate').innerHTML = `<h2>Chybí profil</h2><p class="small">Přihlášení proběhlo, ale nemáš vytvořený profil (role) v tabulce "profiles" — požádej manažera, ať tě tam přidá.</p><p class="small" style="color:#c0392b;">${error?error.message:'chybí řádek'}</p>`;
+    return;
+  }
+  myProfile = profile;
+  document.getElementById('authGate').style.display = 'none';
+  document.getElementById('appRoot').style.display = 'block';
+  document.getElementById('whoami').textContent = `${profile.full_name || user.email} · ${profile.role}`;
+  await loadState();
+}
+
+window.addEventListener('DOMContentLoaded', ()=>{
+  const url = localStorage.getItem('planovac_sb_url');
+  const key = localStorage.getItem('planovac_sb_key');
+  if(url) document.getElementById('sbUrl').value = url;
+  if(key) document.getElementById('sbKey').value = key;
+  if(url && key){
+    document.getElementById('setupBlock').style.display = 'none';
+    sb = window.supabase.createClient(url, key);
+    checkSession();
+  }
+});
+
+/* ============== KONSTANTY ============== */
+const METRICS = [
+  {id:'zivot',  name:'Náš život',                unit:'Kč'},
+  {id:'domov',  name:'Náš domov',                unit:'Kč'},
+  {id:'auto',   name:'Naše auto',                unit:'Kč'},
+  {id:'podnik', name:'Pojištění podnik. rizik',      unit:'Kč (nárůst kmene)'},
+  {id:'ucty',   name:'Bankovní účty',                unit:'ks'},
+  {id:'xsell',  name:'X-SELL',                       unit:'ks'},
+];
+const MONTHS = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+const MONTHS_FULL = ['leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'];
+const MONTH_QUARTER = [1,1,1,2,2,2,3,3,3,4,4,4]; // kvartál pro každý měsíc (index 0-11)
+
+// Doplňková data — zadávají se příležitostně, nejsou součástí měsíčního plánu/skutečnosti
+const EXTRA_FIELDS = [
+  {id:'presjednani_auto',  label:'% přesjednání',        product:'Naše auto'},
+  {id:'presjednani_domov', label:'% přesjednání',        product:'Náš domov'},
+  {id:'slevy_auto',        label:'% slev',               product:'Naše auto'},
+  {id:'rizikova_zivot',    label:'Riziková složka',      product:'Náš život'},
+];
+
+// Denní evidence — manažerský checklist "Moje atomové návyky" (výchozí sada, dál editovatelná v appce)
+const DEFAULT_DAILY_HABITS = [
+  {id:'kampane',   label:'Kontrola kampaní'},
+  {id:'leady',     label:'Kontrola leadů — jednotlivé kampaně'},
+  {id:'chybne',    label:'Kontrola chybných smluv'},
+  {id:'neverif',   label:'Kontrola neverifikovaných smluv'},
+  {id:'pocet_op',  label:'Kontrola počtu OP'},
+  {id:'ukoly',     label:'Kontrola mých zadaných úkolů'},
+  {id:'followup',  label:'Jeden konkrétní follow-up — dotáhnu jednu věc zadanou dřív (ne novou)'},
+  {id:'visici',    label:'Nesplněný úkol nenechávám viset — dnes ho vymáhám, nebo ruším'},
+];
+const DEFAULT_WEEKLY_HABITS = [
+  {id:'predikce_produkce', label:'Poradci — predikce a produkce (týdenní review)'},
+];
+const DEFAULT_DAILY_FIELDS = [
+  {id:'calls', label:'Telefonáty'},
+  {id:'meetings', label:'Schůzky'},
+  {id:'cases', label:'Obchodní případy'},
+  {id:'xsell', label:'X-SELL formuláře'},
+  {id:'askedNext', label:'Zeptal se na další produkt (klientů)'},
+];
+
+/* ============== STAV ============== */
+let state = {
+  year: '2026',
+  currentMonth: (new Date()).getMonth()+1,
+  advisors: [],     // {id, name, endMonth: null|1-12}
+  plans: {},        // plans[advisorId][metricId] = number (annual)
+  distGlobal: [],  // [12 percentages] — STEJNÉ PRO VŠECHNY PORADCE A VŠECHNY PRODUKTY
+  adj: {},          // adj[advisorId][metricId] = [12 numbers], additive Kč/ks adjustments
+  actual: {},       // actual[advisorId][metricId] = [12 numbers], skutečně splněno
+  extra: {},        // extra[advisorId][fieldId] = number — doplňková data (přesjednání, slevy, riziková složka...)
+  extraNote: {},    // extraNote[advisorId] = text — poznámka k doplňkovým datům
+  teamName: 'Ústí nad Labem',
+  weeklyManual: {pohovory:0, kontakty:0}, // ručně dopisovaná čísla do predikce
+  oneOnOne: {}, // oneOnOne[advisorId] = [{date, prep, note, motivace, akcniPlan, dusledek, ukoly}] — historie záznamů z 1-1
+  oneOnOneDraft: {}, // oneOnOneDraft[advisorId] = rozepsaný, zatím neuložený záznam (přežije reload)
+  yearArchive: {}, // yearArchive[rok] = {plans, actual, adj, transferLog} — archiv při založení nového roku
+  campaigns: [],   // [{id, name, kind:'kampan'|'lead'}]
+  campaignWeekly: {}, // campaignWeekly[campaignId][weekKey][advisorId] = {leady,uzavreno,xsellForms,klientiKalkulace,obchody,novKc,novKs}
+  realTeamPlan: {}, // realTeamPlan[metricId] = roční cílová částka od vedení (nepovinné, obvykle nižší než součet individuálních plánů)
+  transferLog: []   // {id,date,metricId,fromLabel,fromId,fromPerMonth,fromMonth,toMonth,targets:[{id,name,perMonth}],note}
+};
+// Denní evidence má vlastní, samostatně ukládaný stav (jiný storage klíč), aby zbytek appky zůstal lehký
+let dailyState = {
+  daily: {},         // daily[advisorId][YYYY-MM-DD] = {calls,meetings,cases,xsell,askedNext,note}
+  dailyManager: {},  // dailyManager[YYYY-MM-DD] = {habits:{habitId:bool}, weekly:{habitId:bool}, personOfDay:advisorId, personOfDayNote:string}
+  config: { habits: null, weekly: null, fields: null } // editovatelné body checklistu a sloupců (null = použij výchozí sadu)
+};
+let activeTab = 'dashboard';
+let saveTimer = null;
+let saveDailyTimer = null;
+
+/* ============== PERSISTENCE ============== */
+async function loadState(){
+  let loaded = false;
+  if(storageAvailable()){
+    try{
+      const res = await window.storage.get('planovac_state_v1', false);
+      if(res && res.value){
+        const parsed = JSON.parse(res.value);
+        state = Object.assign(state, parsed);
+        loaded = true;
+      }
+    }catch(e){ /* žádná uložená data zatím */ }
+    try{
+      const res2 = await window.storage.get('planovac_daily_v1', false);
+      if(res2 && res2.value){
+        const parsed2 = JSON.parse(res2.value);
+        dailyState = Object.assign(dailyState, parsed2);
+      }
+    }catch(e){ /* žádná uložená denní data zatím */ }
+  }
+  if(!loaded && localStorageAvailable()){
+    try{
+      const raw = localStorage.getItem('planovac_state_v1');
+      if(raw) state = Object.assign(state, JSON.parse(raw));
+    }catch(e){ /* žádná uložená data zatím */ }
+    try{
+      const rawD = localStorage.getItem('planovac_daily_v1');
+      if(rawD) dailyState = Object.assign(dailyState, JSON.parse(rawD));
+    }catch(e){ /* žádná uložená denní data zatím */ }
+  }
+  // migrace ze starší verze (rozložení bývalo per-poradce) + výchozí rovnoměrné %
+  if(!Array.isArray(state.distGlobal) || state.distGlobal.length!==12){
+    state.distGlobal = Array(12).fill(Math.round((100/12)*100)/100);
+  }
+  if(!state.actual) state.actual = {};
+  if(!state.extra) state.extra = {};
+  if(!state.extraNote) state.extraNote = {};
+  if(!state.teamName) state.teamName = 'Ústí nad Labem';
+  if(!state.weeklyManual) state.weeklyManual = {pohovory:0, kontakty:0};
+  if(!state.oneOnOne) state.oneOnOne = {};
+  if(!state.oneOnOneDraft) state.oneOnOneDraft = {};
+  if(!state.yearArchive) state.yearArchive = {};
+  if(!state.campaigns) state.campaigns = [];
+  if(!state.campaignWeekly) state.campaignWeekly = {};
+  if(!state.realTeamPlan) state.realTeamPlan = {};
+  if(!state.currentMonth) state.currentMonth = (new Date()).getMonth()+1;
+  if(!dailyState.daily) dailyState.daily = {};
+  if(!dailyState.dailyManager) dailyState.dailyManager = {};
+  if(!dailyState.config) dailyState.config = {habits:null, weekly:null, fields:null};
+  delete state.dist; // starý per-poradce formát už se nepoužívá
+
+  // Poradci, plány, skutečnost, úpravy, rozložení %, přerozdělení, reálný plán —
+  // tohle už je "pravda" v databázi (Supabase), lokální kopie přepíšeme čerstvými daty.
+  if(sb && myUser){
+    await loadFromSupabase();
+  }
+  state.advisors.forEach(a=>{ if(a.isTeamLeader===undefined) a.isTeamLeader=false; if(a.teamLeaderId===undefined) a.teamLeaderId=null; });
+
+  render();
+  if(storageAvailable() || localStorageAvailable()) markSaved(); else markNoStorage();
+}
+
+async function loadFromSupabase(){
+  try{
+    const year = Number(state.year) || new Date().getFullYear();
+
+    const { data: advisorsRows, error: advErr } = await sb.from('advisors').select('*').order('name');
+    if(advErr) throw advErr;
+    state.advisors = (advisorsRows||[]).map(r=>({
+      id: r.id, name: r.name, code: r.code||'',
+      startMonth: r.start_month, endMonth: r.end_month,
+      isTeamLeader: r.is_team_leader, teamLeaderId: r.team_leader_id,
+      hiddenDaily: r.hidden_daily
+    }));
+
+    const { data: planRows } = await sb.from('plans').select('*');
+    state.plans = {};
+    (planRows||[]).forEach(r=>{ if(!state.plans[r.advisor_id]) state.plans[r.advisor_id]={}; state.plans[r.advisor_id][r.metric_id]=Number(r.amount)||0; });
+
+    const { data: actualRows } = await sb.from('actuals').select('*').eq('year', year);
+    state.actual = {};
+    (actualRows||[]).forEach(r=>{
+      if(!state.actual[r.advisor_id]) state.actual[r.advisor_id]={};
+      if(!state.actual[r.advisor_id][r.metric_id]) state.actual[r.advisor_id][r.metric_id]=Array(12).fill(0);
+      state.actual[r.advisor_id][r.metric_id][r.month-1] = Number(r.amount)||0;
+    });
+
+    const { data: adjRows } = await sb.from('adjustments').select('*').eq('year', year);
+    state.adj = {};
+    (adjRows||[]).forEach(r=>{
+      if(!state.adj[r.advisor_id]) state.adj[r.advisor_id]={};
+      if(!state.adj[r.advisor_id][r.metric_id]) state.adj[r.advisor_id][r.metric_id]=Array(12).fill(0);
+      state.adj[r.advisor_id][r.metric_id][r.month-1] = Number(r.amount)||0;
+    });
+
+    const { data: distRow } = await sb.from('dist_global').select('*').eq('year', year).maybeSingle();
+    if(distRow && Array.isArray(distRow.percentages) && distRow.percentages.length===12){
+      state.distGlobal = distRow.percentages.map(Number);
+    }
+
+    const { data: transferRows } = await sb.from('transfer_log').select('*').eq('year', year).order('created_at');
+    state.transferLog = (transferRows||[]).map(r=>({
+      id: r.id, date: r.created_at, metricId: r.metric_id,
+      fromLabel: r.from_label, fromId: r.from_advisor_id, fromPerMonth: Number(r.from_per_month)||0,
+      fromMonth: r.from_month, toMonth: r.to_month,
+      targetFromMonth: r.target_from_month, targetToMonth: r.target_to_month,
+      targets: r.targets||[], note: r.note
+    }));
+
+    const { data: realPlanRows } = await sb.from('real_team_plan').select('*').eq('owner_id', myUser.id).eq('year', year);
+    state.realTeamPlan = {};
+    (realPlanRows||[]).forEach(r=>{ state.realTeamPlan[r.metric_id] = Number(r.amount)||0; });
+
+  }catch(e){
+    console.error('Načtení z databáze selhalo', e);
+    toast('Načtení dat z databáze selhalo: ' + e.message);
+  }
+}
+function storageAvailable(){
+  return typeof window.storage === 'object' && window.storage !== null && typeof window.storage.set === 'function' && typeof window.storage.get === 'function';
+}
+function localStorageAvailable(){
+  try{
+    if(typeof localStorage === 'undefined') return false;
+    const t = '__test__'; localStorage.setItem(t,'1'); localStorage.removeItem(t);
+    return true;
+  }catch(e){ return false; }
+}
+function markSaved(){
+  const el = document.getElementById('saveStatus');
+  const via = storageAvailable() ? '' : ' (lokálně v prohlížeči)';
+  if(el){ el.textContent = '✓ Uloženo' + via + ' ' + (new Date()).toLocaleTimeString('cs-CZ'); el.style.color = '#cfe8f2'; }
+}
+function markSaveError(err){
+  const el = document.getElementById('saveStatus');
+  const msg = err && err.message ? err.message : 'neznámá chyba';
+  if(el){ el.textContent = '⚠ Uložení selhalo (' + msg + ') — zkus záložní JSON export'; el.style.color = '#ffb3a7'; }
+}
+function markNoStorage(){
+  const el = document.getElementById('saveStatus');
+  if(el){ el.textContent = '⚠ Automatické ukládání tu není k dispozici — stahuj si zálohu (JSON)'; el.style.color = '#ffb3a7'; }
+}
+// Interní UI stav (výběry v dropdownech, rozepsané formuláře apod.) se ukládat nemusí —
+// odstraněním snižujeme velikost dat a vyhneme se ukládání dočasných/nekonzistentních hodnot.
+function cleanForSave(obj){
+  const copy = JSON.parse(JSON.stringify(obj, (key, val)=> key.startsWith && key.startsWith('_') ? undefined : val));
+  return copy;
+}
+function saveState(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async ()=>{
+    const clean = cleanForSave(state);
+    if(storageAvailable()){
+      try{ await window.storage.set('planovac_state_v1', JSON.stringify(clean), false); markSaved(); return; }
+      catch(e){ console.error('Uložení selhalo', e); }
+    }
+    if(localStorageAvailable()){
+      try{ localStorage.setItem('planovac_state_v1', JSON.stringify(clean)); markSaved(); return; }
+      catch(e2){ console.error('Uložení do localStorage selhalo', e2); markSaveError(e2); return; }
+    }
+    markNoStorage();
+  }, 350);
+}
+function saveDailyState(){
+  clearTimeout(saveDailyTimer);
+  saveDailyTimer = setTimeout(async ()=>{
+    const clean = cleanForSave(dailyState);
+    if(storageAvailable()){
+      try{ await window.storage.set('planovac_daily_v1', JSON.stringify(clean), false); markSaved(); return; }
+      catch(e){ console.error('Uložení denní evidence selhalo', e); }
+    }
+    if(localStorageAvailable()){
+      try{ localStorage.setItem('planovac_daily_v1', JSON.stringify(clean)); markSaved(); return; }
+      catch(e2){ console.error('Uložení denní evidence do localStorage selhalo', e2); markSaveError(e2); return; }
+    }
+    markNoStorage();
+  }, 350);
+}
+function startNewYear(){
+  const cur = state.year;
+  const next = (Number(cur) && /^\d{4}$/.test(cur)) ? String(Number(cur)+1) : prompt('Jaký je nový rok? (např. 2027)', '');
+  if(!next) return;
+  if(!confirm(`Založit rok ${next}? Roční plány, rozložení %, skutečnost a historie přerozdělení za ${cur} se uloží do archivu a appka se pro nový rok vynuluje. Poradci, doplňková data a historie 1-1 zůstanou beze změny.`)) return;
+  state.yearArchive[cur] = {
+    plans: cleanForSave(state.plans),
+    distGlobal: cleanForSave(state.distGlobal),
+    actual: cleanForSave(state.actual),
+    adj: cleanForSave(state.adj),
+    transferLog: cleanForSave(state.transferLog),
+  };
+  state.plans = {};
+  state.actual = {};
+  state.adj = {};
+  state.transferLog = [];
+  // rozložení % necháváme — je to jen křivka na tvar roku, obvykle se rok od roku podobá; kdyby ne, dá se v Rozložení % vynulovat ručně
+  state.year = next;
+  state.currentMonth = 1;
+  syncDistGlobal();
+  saveState();
+  toast(`Rok ${next} založen, ${cur} je v archivu`);
+  render();
+}
+function downloadYearArchive(year){
+  const payload = {year, ...state.yearArchive[year]};
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'planovac_archiv_'+year+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function exportBackup(){
+  const payload = {exportedAt: new Date().toISOString(), state: cleanForSave(state), dailyState: cleanForSave(dailyState)};
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'planovac_zaloha_'+(new Date().toISOString().slice(0,10))+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Záloha stažena');
+}
+function importBackup(file){
+  if(!file) return;
+  if(!confirm('Obnovením zálohy přepíšeš aktuální data v appce. Pokračovat?')) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const payload = JSON.parse(e.target.result);
+      if(payload.state) state = Object.assign(state, payload.state);
+      if(payload.dailyState) dailyState = Object.assign(dailyState, payload.dailyState);
+      saveState(); saveDailyState(); render();
+      toast('Záloha obnovena');
+    }catch(err){ toast('Soubor se nepodařilo načíst — je to platný JSON export z téhle appky?'); }
+  };
+  reader.readAsText(file);
+}
+function uid(){ return 'id'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+/* ============== POMOCNÉ ============== */
+function metric(id){ return METRICS.find(m=>m.id===id); }
+function fmt(metricId, v){
+  v = Math.round(v||0);
+  const u = metric(metricId).unit;
+  return v.toLocaleString('cs-CZ') + (u.startsWith('Kč') ? ' Kč' : ' ks');
+}
+function fmtNum(v){ return Math.round(v||0).toLocaleString('cs-CZ'); }
+
+function getPlan(aId,mId){ return (state.plans[aId] && state.plans[aId][mId]) || 0; }
+function setPlan(aId,mId,val){
+  if(!state.plans[aId]) state.plans[aId]={};
+  const amount = Math.max(0, Number(val)||0);
+  state.plans[aId][mId] = amount;
+  if(sb){
+    sb.from('plans').upsert({advisor_id:aId, metric_id:mId, amount}).then(({error})=>{ if(error){ console.error(error); toast('Uložení plánu selhalo: '+error.message); } });
+  }
+  saveState();
+}
+function getDistGlobal(){
+  if(!Array.isArray(state.distGlobal) || state.distGlobal.length!==12) state.distGlobal=Array(12).fill(0);
+  return state.distGlobal;
+}
+function syncDistGlobal(){
+  if(!sb) return;
+  const year = Number(state.year) || new Date().getFullYear();
+  sb.from('dist_global').upsert({year, percentages:getDistGlobal()}).then(({error})=>{ if(error){ console.error(error); toast('Uložení rozložení % selhalo: '+error.message); } });
+}
+function setDistGlobalCell(idx,val){
+  const arr = getDistGlobal();
+  arr[idx] = Math.max(0, Number(val)||0);
+  syncDistGlobal();
+  saveState();
+}
+function distSumGlobal(){ return getDistGlobal().reduce((a,b)=>a+b,0); }
+
+function getAdj(aId,mId){
+  if(!state.adj[aId]) state.adj[aId]={};
+  if(!state.adj[aId][mId]) state.adj[aId][mId]=Array(12).fill(0);
+  return state.adj[aId][mId];
+}
+function addAdjCell(aId,mId,idx,delta){
+  const arr = getAdj(aId,mId);
+  arr[idx] = (arr[idx]||0) + delta;
+}
+function syncAdjCell(aId,mId,idx){
+  if(!sb) return;
+  const year = Number(state.year) || new Date().getFullYear();
+  const amount = getAdj(aId,mId)[idx]||0;
+  sb.from('adjustments').upsert({advisor_id:aId, metric_id:mId, month:idx+1, year, amount}).then(({error})=>{ if(error){ console.error(error); toast('Uložení úpravy selhalo: '+error.message); } });
+}
+
+function getActual(aId,mId){
+  if(!state.actual[aId]) state.actual[aId]={};
+  if(!state.actual[aId][mId]) state.actual[aId][mId]=Array(12).fill(0);
+  return state.actual[aId][mId];
+}
+function setActualCell(aId,mId,idx,val){
+  const arr = getActual(aId,mId);
+  arr[idx] = Number(val)||0; // záměrně bez omezení na 0+ — u PPR může být pokles (stornovaná smlouva) v mínusu
+  if(sb){
+    const year = Number(state.year) || new Date().getFullYear();
+    sb.from('actuals').upsert({advisor_id:aId, metric_id:mId, month:idx+1, year, amount:arr[idx]}).then(({error})=>{ if(error){ console.error(error); toast('Uložení skutečnosti selhalo: '+error.message); } });
+  }
+  saveState();
+}
+function getExtra(aId, fieldId){ return (state.extra[aId] && state.extra[aId][fieldId]!=null) ? state.extra[aId][fieldId] : null; }
+function setExtra(aId, fieldId, val){
+  if(!state.extra[aId]) state.extra[aId]={};
+  state.extra[aId][fieldId] = (val==='' || val==null) ? null : Number(val);
+  saveState();
+}
+function getExtraNote(aId){ return (state.extraNote && state.extraNote[aId]) || ''; }
+function setExtraNote(aId, val){
+  if(!state.extraNote) state.extraNote = {};
+  state.extraNote[aId] = val;
+  saveState();
+}
+
+/* ---- Denní evidence ---- */
+function todayStr(){ return (new Date()).toISOString().slice(0,10); }
+function yesterdayStr(){ const d=new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); }
+function formatDateCz(iso){
+  if(!iso) return '—';
+  const parts = iso.split('-');
+  if(parts.length!==3) return iso;
+  const [y,m,d] = parts;
+  return `${Number(d)}.${Number(m)}.${y}`;
+}
+function dateLabel(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  return d.toLocaleDateString('cs-CZ',{weekday:'long', day:'numeric', month:'long'});
+}
+function getDailyEntry(aId, dateStr){
+  if(!dailyState.daily[aId]) dailyState.daily[aId]={};
+  if(!dailyState.daily[aId][dateStr]) dailyState.daily[aId][dateStr]={calls:0,meetings:0,cases:0,xsell:0,askedNext:0,note:''};
+  return dailyState.daily[aId][dateStr];
+}
+function setDailyField(aId, dateStr, field, val){
+  const entry = getDailyEntry(aId, dateStr);
+  entry[field] = (field==='note') ? val : (Number(val)||0);
+  saveDailyState();
+}
+function getManagerDay(dateStr){
+  if(!dailyState.dailyManager[dateStr]) dailyState.dailyManager[dateStr] = {habits:{}, weekly:{}, personOfDay:null, personOfDayNote:''};
+  return dailyState.dailyManager[dateStr];
+}
+function toggleHabit(dateStr, habitId, isWeekly){
+  const day = getManagerDay(dateStr);
+  const bucket = isWeekly ? day.weekly : day.habits;
+  bucket[habitId] = !bucket[habitId];
+  saveDailyState();
+}
+function setPersonOfDay(dateStr, advisorId){
+  const day = getManagerDay(dateStr);
+  day.personOfDay = advisorId || null;
+  saveDailyState();
+}
+function setPersonNote(dateStr, val){
+  const day = getManagerDay(dateStr);
+  day.personOfDayNote = val;
+  saveDailyState();
+}
+
+function baseMonthly(aId,mId,idx){
+  const plan = getPlan(aId,mId);
+  const dist = getDistGlobal();
+  const a = advisor(aId);
+  const isEven = (mId==='ucty' || mId==='xsell'); // rovnoměrně, ne podle % křivky
+  if(a && a.startMonth && a.startMonth>1){
+    if(idx+1 < a.startMonth) return 0; // před nástupem žádný plán
+    const activeMonths = 12 - a.startMonth + 1;
+    if(isEven) return activeMonths>0 ? plan/activeMonths : 0;
+    let sumRemaining = 0;
+    for(let i=a.startMonth-1;i<12;i++) sumRemaining += (dist[i]||0);
+    if(sumRemaining<=0) return 0;
+    return plan * (dist[idx]||0) / sumRemaining; // celoroční plán se rozpočítá jen na měsíce od nástupu do konce roku
+  }
+  if(isEven) return plan/12;
+  return plan * (dist[idx]||0) / 100;
+}
+function finalMonthly(aId,mId,idx){
+  return baseMonthly(aId,mId,idx) + (getAdj(aId,mId)[idx]||0);
+}
+function advisor(id){ return state.advisors.find(a=>a.id===id); }
+function activeAdvisors(){ return state.advisors; }
+function isEndedAt(a, monthIdx1based){ return a.endMonth && monthIdx1based > a.endMonth; }
+function isBeforeStart(a, monthIdx1based){ return a.startMonth && monthIdx1based < a.startMonth; }
+function isNovacek(a){
+  if(a.endMonth) return false; // ukončení má vždy přednost
+  if(!a.startMonth) return false;
+  const cm = state.currentMonth || (new Date()).getMonth()+1;
+  return cm >= a.startMonth && cm <= a.startMonth + 2; // nováček max. 3 měsíce od nástupu
+}
+function statusBadgeHtml(a){
+  if(a.endMonth) return '<span class="badge ended">ukončen</span>';
+  if(isNovacek(a)) return '<span class="badge start">nováček</span>';
+  return '';
+}
+function isoWeekNumber(date){
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil(((d - yearStart) / 86400000 + 1)/7);
+}
+// časový úsek pro report: 'ytd_month' (od ledna do konce měsíce), 'month' (jen daný měsíc),
+// 'ytd_quarter' (od ledna do konce kvartálu), 'quarter' (jen daný kvartál), 'year' (celý rok)
+function sliceRange(slice, cm){
+  const qEnd = MONTH_QUARTER[cm-1]*3, qStart = qEnd-2;
+  if(slice==='ytd_month') return [1, cm];
+  if(slice==='month') return [cm, cm];
+  if(slice==='ytd_quarter') return [1, qEnd];
+  if(slice==='quarter') return [qStart, qEnd];
+  if(slice==='year') return [1, 12];
+  return [1, cm];
+}
+function sliceValues(aId, mId, slice, cm){
+  const [from, to] = sliceRange(slice, cm);
+  let plan=0, actual=0;
+  for(let i=from-1;i<to;i++){ plan += finalMonthly(aId,mId,i); actual += (getActual(aId,mId)[i]||0); }
+  return {plan, actual};
+}
+// Sjednocené barevné hodnocení plnění: 90 %+ zelená, 70–89 % oranžová, jinak červená
+function plneniClass(p){ return p>=90?'sum-ok':(p>=70?'sum-warn':'sum-bad'); }
+function plneniBgClass(p){ return p>=90?'bg-ok':(p>=70?'bg-warn':'bg-bad'); }
+// Inline styl (ne jen CSS třída) — Outlook/Gmail po vložení z clipboardu často ignorují CSS třídy,
+// ale styl přímo v atributu style="" se propíše skoro vždy.
+const COLOR_OK = {bg:'#8fe08a', fg:'#0a3d0a'};
+const COLOR_WARN = {bg:'#ffc266', fg:'#5c3a00'};
+const COLOR_BAD = {bg:'#ff8a80', fg:'#5c0a04'};
+function inlineStyleFor(cls){
+  const c = cls==='bg-ok' ? COLOR_OK : (cls==='bg-warn' ? COLOR_WARN : COLOR_BAD);
+  return `background:${c.bg};color:${c.fg};font-weight:800;`;
+}
+function plneniBgStyle(p){ return inlineStyleFor(plneniBgClass(p)); }
+function plneniPct(plan, actual){ return plan>0 ? Math.round(actual/plan*100) : (actual>0?100:0); }
+function safePct(num, den){ return den>0 ? Math.round(num/den*100) : 0; }
+function pickupBgClass(p){ return plneniBgClass(p); } // leady→uzavřeno, 90/70 stejně jako plnění plánu
+function xsellBgClass(p){ return p>=30?'bg-ok':(p>=15?'bg-warn':'bg-bad'); }
+function kalkulaceBgClass(p){ return p>=50?'bg-ok':(p>=25?'bg-warn':'bg-bad'); }
+function konverzeBgClass(p){ return p>=15?'bg-ok':(p>=10?'bg-warn':'bg-bad'); }
+function pickupBgStyle(p){ return inlineStyleFor(pickupBgClass(p)); }
+function xsellBgStyle(p){ return inlineStyleFor(xsellBgClass(p)); }
+function kalkulaceBgStyle(p){ return inlineStyleFor(kalkulaceBgClass(p)); }
+function konverzeBgStyle(p){ return inlineStyleFor(konverzeBgClass(p)); }
+function trendArrow(cur, prev){
+  if(prev==null || prev===undefined) return '';
+  if(cur>prev) return ' <span class="sum-ok">▲</span>';
+  if(cur<prev) return ' <span class="sum-bad">▼</span>';
+  return ' <span class="small">▬</span>';
+}
+// TL zobrazení: sám jako obchodník, nebo on + jeho tým dohromady
+function scopeIdsFor(aId){
+  const a = advisor(aId);
+  if(a && a.isTeamLeader && state._tlViewMode==='team'){
+    return [aId, ...state.advisors.filter(x=>x.teamLeaderId===aId).map(x=>x.id)];
+  }
+  return [aId];
+}
+function scopedFinalMonthly(ids,mId,idx){ return ids.reduce((s,id)=>s+finalMonthly(id,mId,idx),0); }
+function scopedActualAt(ids,mId,idx){ return ids.reduce((s,id)=>s+(getActual(id,mId)[idx]||0),0); }
+function scopedPlan(ids,mId){ return ids.reduce((s,id)=>s+getPlan(id,mId),0); }
+function teamPlanMonthly(mId, idx, advisorsList, allowReal){
+  const real = allowReal && state.realTeamPlan && state.realTeamPlan[mId];
+  if(real){ return real * (getDistGlobal()[idx]||0) / 100; }
+  return advisorsList.reduce((s,ad)=>s+finalMonthly(ad.id,mId,idx),0);
+}
+function teamPlanYear(mId, advisorsList, allowReal){
+  const real = allowReal && state.realTeamPlan && state.realTeamPlan[mId];
+  if(real) return real;
+  let s=0; for(let i=0;i<12;i++) s+=teamPlanMonthly(mId,i,advisorsList,false); return s;
+}
+function scopedSliceValues(ids,mId,sliceKey,cm){
+  let plan=0, actual=0;
+  ids.forEach(id=>{ const v=sliceValues(id,mId,sliceKey,cm); plan+=v.plan; actual+=v.actual; });
+  return {plan, actual};
+}
+
+/* ---- Kampaně / leady ---- */
+function weekKeyFor(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  return `${d.getFullYear()}-W${String(isoWeekNumber(d)).padStart(2,'0')}`;
+}
+function addDaysStr(dateStr, days){
+  const d = new Date(dateStr+'T00:00:00');
+  d.setDate(d.getDate()+days);
+  return d.toISOString().slice(0,10);
+}
+function addCampaign(name, kind){
+  if(!name || !name.trim()) return;
+  state.campaigns.push({id:uid(), name:name.trim(), kind: kind||'kampan'});
+  saveState();
+}
+function renameCampaign(id, name){
+  const c = state.campaigns.find(x=>x.id===id); if(!c) return;
+  c.name = name.trim() || c.name;
+  saveState();
+}
+function removeCampaign(id){
+  if(!confirm('Smazat tuhle kampaň/leady včetně všech zadaných týdenních dat?')) return;
+  state.campaigns = state.campaigns.filter(c=>c.id!==id);
+  delete state.campaignWeekly[id];
+  saveState(); render();
+}
+function getCampaignWeek(campaignId, weekKey, advisorId){
+  if(!state.campaignWeekly[campaignId]) state.campaignWeekly[campaignId]={};
+  if(!state.campaignWeekly[campaignId][weekKey]) state.campaignWeekly[campaignId][weekKey]={};
+  if(!state.campaignWeekly[campaignId][weekKey][advisorId]) state.campaignWeekly[campaignId][weekKey][advisorId]={leady:0,uzavreno:0,xsellForms:0,klientiKalkulace:0,obchody:0,novKc:0,novKs:0};
+  return state.campaignWeekly[campaignId][weekKey][advisorId];
+}
+function setCampaignField(campaignId, weekKey, advisorId, field, val){
+  const e = getCampaignWeek(campaignId, weekKey, advisorId);
+  e[field] = Number(val)||0;
+  saveState();
+}
+function gridTabNav(e){
+  if(e.key !== 'Tab') return;
+  const current = e.target;
+  const table = current.closest('table');
+  if(!table) return;
+  const inputs = Array.from(table.querySelectorAll('input[data-key]'));
+  const idx = inputs.indexOf(current);
+  if(idx===-1) return;
+  const nextIdx = e.shiftKey ? idx-1 : idx+1;
+  if(nextIdx<0 || nextIdx>=inputs.length) return; // necháme prohlížeč vytabovat ven z tabulky přirozeně
+  e.preventDefault();
+  const nextKey = inputs[nextIdx].getAttribute('data-key');
+  current.blur(); // vyvolá onchange -> uloží hodnotu -> re-render
+  setTimeout(()=>{
+    const el = document.querySelector(`[data-key="${CSS.escape(nextKey)}"]`);
+    if(el){ el.focus(); if(el.select) el.select(); }
+  }, 0);
+}
+function copyPlainText(elId){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  const text = el.value !== undefined ? el.value : el.textContent;
+  navigator.clipboard.writeText(text).then(()=>toast('Text zkopírován')).catch(()=>{
+    el.select && el.select();
+    try{ document.execCommand('copy'); toast('Text zkopírován'); }catch(e){ toast('Kopírování se nepodařilo, označ text ručně'); }
+  });
+}
+function printText(title, text){
+  const w = window.open('', '_blank');
+  if(!w){ toast('Prohlížeč zablokoval nové okno — povol vyskakovací okna pro tisk'); return; }
+  w.document.write(`<!DOCTYPE html><html><head><title>${title}</title><meta charset="UTF-8">
+    <style>body{font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;padding:30px;white-space:pre-wrap;}h1{font-size:18px;}</style>
+    </head><body><h1>${title}</h1><div>${text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div></body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>w.print(), 300);
+}
+function selectedMonths1on1(){
+  if(!state._selMonths1on1) state._selMonths1on1 = {};
+  const checked = Object.keys(state._selMonths1on1).filter(k=>state._selMonths1on1[k]).map(Number).sort((a,b)=>a-b);
+  if(checked.length===0){
+    const cm = state.currentMonth || (new Date()).getMonth()+1;
+    state._selMonths1on1[cm] = true;
+    return [cm];
+  }
+  return checked;
+}
+const SLICE_LABELS_SHORT = {ytd_month:'Od začátku roku do konce měsíce', month:'Jen daný měsíc', quarter:'Daný kvartál', year:'Do konce roku'};
+function getBlocks1on1(){
+  if(!state.blocks1on1){
+    const cm = state.currentMonth || (new Date()).getMonth()+1;
+    state.blocks1on1 = [{slice:'ytd_month', month:cm}, {slice:'month', month:cm}];
+  }
+  return state.blocks1on1;
+}
+function addBlock1on1(sliceKey, month){
+  const blocks = getBlocks1on1();
+  if(blocks.some(b=>b.slice===sliceKey && b.month===month)){ toast('Tenhle výstup už v seznamu je'); return; }
+  blocks.push({slice:sliceKey, month:Number(month)});
+  saveState(); render();
+}
+function removeBlock1on1(idx){
+  getBlocks1on1().splice(idx,1);
+  saveState(); render();
+}
+function slice1LabelFor(slice, cm1){
+  const qEnd = MONTH_QUARTER[cm1-1]*3, qStart=qEnd-2, qN=MONTH_QUARTER[cm1-1];
+  if(slice==='ytd_month') return `od ledna do konce ${MONTHS[cm1-1]}`;
+  if(slice==='month') return `${MONTHS[cm1-1]}`;
+  if(slice==='quarter') return `Q${qN} (${MONTHS[qStart-1]}–${MONTHS[qEnd-1]})`;
+  if(slice==='year') return `celý rok ${state.year}`;
+  return '';
+}
+function printOneOnOne(aId, mode){
+  const a = advisor(aId);
+  const d = getDraft(aId);
+  const blocks1on1 = getBlocks1on1();
+  const showExtraP = !!state._showExtraInDetail;
+  const tlModeP = a.isTeamLeader ? (state._tlViewMode || 'self') : 'self';
+  const scopeIds = tlModeP==='team' ? scopeIdsFor(aId) : [aId];
+
+  function plneniTableHtml(sliceKey, label, cm1){
+    const rows = METRICS.map(m=>{
+      const v = scopedSliceValues(scopeIds,m.id,sliceKey,cm1);
+      const z = v.plan-v.actual;
+      const p = plneniPct(v.plan,v.actual);
+      return `<tr><td>${m.name}</td><td>${fmt(m.id,v.plan)}</td><td>${fmt(m.id,v.actual)}</td><td><b>${z>=0?fmt(m.id,z):('\u2212'+fmt(m.id,Math.abs(z)))}</b></td><td>${p}%</td></tr>`;
+    }).join('');
+    return `<table style="margin-bottom:12px;"><thead><tr><th colspan="5" style="background:#0077a3;">${label}</th></tr><tr><th>Produkt</th><th>Pl\u00e1n</th><th>Skute\u010dnost</th><th>Zb\u00fdv\u00e1 dodat</th><th>Pln\u011bn\u00ed %</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  const plneniBlocks = blocks1on1.map(b=>plneniTableHtml(b.slice, slice1LabelFor(b.slice,b.month), b.month));
+
+  let plneniHtml = `
+    <div class="section">
+      <h2>Pln\u011bn\u00ed${tlModeP==='team'?' (Team leader + t\u00fdm)':''}</h2>
+      ${plneniBlocks.join('')}
+    </div>`;
+
+  let campaignsHtml = '';
+  if(state._showCampaigns1on1 && state.campaigns.length){
+    const weekDate = state._campaignWeekDate1on1 || todayStr();
+    const wKey = weekKeyFor(weekDate);
+    const wd = new Date(weekDate+'T00:00:00');
+    const wLabel = `${isoWeekNumber(wd)}. t\u00fdden ${wd.getFullYear()}`;
+    const crows = state.campaigns.map(c=>{
+      let leady=0,uzavreno=0,xsellForms=0,klienti=0,obchody=0,novKc=0,novKs=0;
+      scopeIds.forEach(id=>{ const e=getCampaignWeek(c.id,wKey,id); leady+=e.leady; uzavreno+=e.uzavreno; xsellForms+=e.xsellForms; klienti+=e.klientiKalkulace; obchody+=e.obchody; novKc+=e.novKc; novKs+=e.novKs; });
+      return `<tr><td>${escapeHtml(c.name)}</td><td>${leady}</td><td>${uzavreno}</td><td>${xsellForms}</td><td>${klienti}</td><td>${obchody}</td><td>${safePct(obchody,klienti)}%</td><td>${fmtNum(novKc)} K\u010d / ${novKs} ks</td></tr>`;
+    }).join('');
+    campaignsHtml = `<div class="section">
+      <h2>Kampan\u011b a leady \u2014 ${wLabel}</h2>
+      <table><thead><tr><th>Kampa\u0148</th><th>Lead\u016f</th><th>Uzav\u0159eno</th><th>X-SELL</th><th>Klienti kalk.</th><th>Obchody</th><th>Konverze</th><th>NOV</th></tr></thead><tbody>${crows}</tbody></table>
+    </div>`;
+  }
+
+  let extraHtml = '';
+  if(showExtraP){
+    const erows = EXTRA_FIELDS.map(f=>{ const v=getExtra(aId,f.id); return `<tr><td>${f.label} (${f.product})</td><td>${v==null?'\u2014':v+' %'}</td></tr>`; }).join('');
+    const rizik=getExtra(aId,'rizikova_zivot'); const inv=rizik!=null?(100-rizik):null;
+    const note = getExtraNote(aId);
+    extraHtml = `<div class="section">
+      <h2>Dopl\u0148kov\u00e1 data</h2>
+      <table><tbody>${erows}<tr><td>Investi\u010dn\u00ed slo\u017eka (N\u00e1\u0161 \u017eivot, dopo\u010det)</td><td>${inv==null?'\u2014':inv+' %'}</td></tr></tbody></table>
+      ${note ? `<p style="margin-top:8px;font-size:12.5px;"><b>Pozn\u00e1mka:</b> ${escapeHtml(note)}</p>` : ''}
+    </div>`;
+  }
+
+  let sections = plneniHtml + campaignsHtml + extraHtml;
+
+  if(mode==='prep'){
+    sections += `
+    <div class="section">
+      <h2>P\u0159\u00edprava na 1-1</h2>
+      <p>${escapeHtml(d.prep||'\u2014').replace(/\n/g,'<br>')}</p>
+    </div>`;
+  }
+  sections += `
+    <div class="section">
+      <h2>Pozn\u00e1mky z 1-1</h2>
+      <p>${escapeHtml(d.note||'\u2014').replace(/\n/g,'<br>')}</p>
+    </div>`;
+  if(d.motivace.checked){
+    sections += `<div class="section box motivace">
+      <h2>Domluvena individu\u00e1ln\u00ed motivace</h2>
+      <p><b>Popis:</b> ${escapeHtml(d.motivace.popis||'\u2014')}<br><b>Odm\u011bna:</b> ${escapeHtml(d.motivace.odmena||'\u2014')}<br><b>Term\u00edn:</b> ${formatDateCz(d.motivace.termin)}</p>
+    </div>`;
+  }
+  if(d.akcniPlan || d.dusledek){
+    sections += `<div class="section box akcni">
+      <h2>Ak\u010dn\u00ed pl\u00e1n</h2>
+      <p>${escapeHtml(d.akcniPlan||'\u2014')}<br><b>D\u016fsledek p\u0159i nedodr\u017een\u00ed:</b> ${escapeHtml(d.dusledek||'\u2014')}<br><b>Term\u00edn:</b> ${formatDateCz(d.terminAkcniPlan)}</p>
+    </div>`;
+  }
+  if(d.ukoly.length){
+    const urows = d.ukoly.map(u=>`<tr><td>${u.kdo}</td><td>${escapeHtml(u.text||'\u2014')}</td><td>${formatDateCz(u.termin)}</td></tr>`).join('');
+    sections += `<div class="section">
+      <h2>\u00dakoly</h2>
+      <table><thead><tr><th>Kdo</th><th>\u00dakol</th><th>Term\u00edn</th></tr></thead><tbody>${urows}</tbody></table>
+    </div>`;
+  }
+  if(mode==='prep'){
+    sections += `
+    <div class="section"><h2>Prostor na dopln\u011bn\u00ed z 1-1</h2>
+      ${'<div class="line"></div>'.repeat(6)}
+    </div>`;
+  }
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${mode==='prep'?'P\u0159\u00edprava':'Z\u00e1pis'} 1-1 \u2014 ${escapeHtml(a.name)}</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;margin:0;padding:0;}
+    .header{background:#003366;color:#fff;padding:18px 26px;}
+    .header h1{margin:0;font-size:20px;}
+    .header .sub{font-size:13px;margin-top:4px;opacity:.9;}
+    .meta{padding:12px 26px;font-size:12.5px;color:#445;border-bottom:2px solid #eee;}
+    .content{padding:16px 26px 40px;}
+    .section{margin-bottom:20px;}
+    .section h2{font-size:13px;text-transform:uppercase;letter-spacing:.3px;color:#0077a3;border-bottom:2px solid #0077a3;padding-bottom:4px;margin-bottom:8px;}
+    table{border-collapse:collapse;width:100%;font-size:12.5px;}
+    th{background:#003366;color:#fff;padding:6px 8px;text-align:left;}
+    td{padding:6px 8px;border-bottom:1px solid #ddd;}
+    .box{border:1px solid #ddd;border-radius:6px;padding:10px 14px;background:#fafbfc;}
+    .box.motivace{background:#eef8ec;border-color:#bfe3b4;}
+    .box.akcni{background:#fff4e8;border-color:#ffd8a8;}
+    .line{border-bottom:1px solid #ccc;height:26px;}
+    @media print{ body{-webkit-print-color-adjust:exact;print-color-adjust:exact;} }
+  </style>
+  </head><body>
+    <div class="header">
+      <h1>${mode==='prep'?'P\u0158\u00cdPRAVA NA 1-1':'Z\u00c1PIS Z 1-1'}</h1>
+      <div class="sub">${escapeHtml(advisorLabel(a))} \u00b7 ${formatDateCz(d.meta.datum||todayStr())}</div>
+    </div>
+    <div class="meta">M\u00edsto: ${escapeHtml(d.meta.misto||'\u2014')} &nbsp;\u00b7&nbsp; \u010cas: ${escapeHtml(d.meta.cas||'\u2014')} &nbsp;\u00b7&nbsp; P\u0159\u00edtomn\u00ed: ${escapeHtml(d.meta.pritomni||'\u2014')}</div>
+    <div class="content">${sections}</div>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if(!w){ toast('Prohl\u00ed\u017ee\u010d zablokoval nov\u00e9 okno \u2014 povol vyskakovac\u00ed okna pro tisk'); return; }
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>w.print(), 350);
+}
+function getOneOnOneHistory(aId){ if(!state.oneOnOne[aId]) state.oneOnOne[aId]=[]; return state.oneOnOne[aId]; }
+function getDraft(aId){
+  if(!state.oneOnOneDraft[aId]) state.oneOnOneDraft[aId] = {
+    meta:{datum: todayStr(), misto:'', pritomni:'', cas:''},
+    prep:'', note:'', motivace:{checked:false, popis:'', odmena:'', termin:''},
+    akcniPlan:'', dusledek:'', terminAkcniPlan:'', ukoly:[]
+  };
+  const d = state.oneOnOneDraft[aId];
+  if(!d.meta) d.meta = {datum: todayStr(), misto:'', pritomni:'', cas:''};
+  if(!d.motivace) d.motivace = {checked:false, popis:'', odmena:'', termin:''};
+  if(d.motivace.termin===undefined) d.motivace.termin = '';
+  if(d.terminAkcniPlan===undefined) d.terminAkcniPlan = '';
+  if(!d.ukoly) d.ukoly = [];
+  return d;
+}
+function setDraftMeta(aId, field, val){ getDraft(aId).meta[field] = val; saveState(); }
+function setDraftField(aId, field, val){ getDraft(aId)[field] = val; saveState(); }
+function setDraftMotivace(aId, field, val){ getDraft(aId).motivace[field] = val; saveState(); }
+function addDraftUkol(aId){ getDraft(aId).ukoly.push({kdo:'PZ', text:'', termin:'', done:false}); saveState(); render(); }
+function removeDraftUkol(aId, idx){ getDraft(aId).ukoly.splice(idx,1); saveState(); render(); }
+function setDraftUkol(aId, idx, field, val){ getDraft(aId).ukoly[idx][field] = val; saveState(); }
+function resetDraft(aId){ delete state.oneOnOneDraft[aId]; saveState(); }
+function reopenOneOnOne(aId, idx){
+  const h = getOneOnOneHistory(aId)[idx];
+  if(!h) return;
+  if(!confirm('Načíst tento záznam zpět do formuláře? Přepíše to rozepsaný (needuložený) formulář.')) return;
+  state.oneOnOneDraft[aId] = {
+    meta: h.meta ? JSON.parse(JSON.stringify(h.meta)) : {datum: todayStr(), misto:'', pritomni:'', cas:''},
+    prep: h.prep||'', note: h.note||'',
+    motivace: h.motivace ? JSON.parse(JSON.stringify(h.motivace)) : {checked:false,popis:'',odmena:'',termin:''},
+    akcniPlan: h.akcniPlan||'', dusledek: h.dusledek||'', terminAkcniPlan: h.terminAkcniPlan||'',
+    ukoly: h.ukoly ? JSON.parse(JSON.stringify(h.ukoly)) : []
+  };
+  saveState(); render();
+  toast('Záznam načten do formuláře');
+}
+function toggleHistoryOpen(aId, idx){
+  state._openHistory = state._openHistory || {};
+  const key = aId+'-'+idx;
+  state._openHistory[key] = !state._openHistory[key];
+  render();
+}
+function saveOneOnOneRecord(aId){
+  const d = getDraft(aId);
+  const isEmpty = !d.note.trim() && !d.prep.trim() && d.ukoly.length===0 && !(d.akcniPlan||'').trim() && !(d.dusledek||'').trim() && !d.motivace.checked;
+  if(isEmpty){ toast('Zápis je prázdný — napiš alespoň poznámku, akční plán nebo úkol'); return; }
+  getOneOnOneHistory(aId).push({
+    date: todayStr(),
+    meta: JSON.parse(JSON.stringify(d.meta)),
+    prep: d.prep, note: d.note,
+    motivace: JSON.parse(JSON.stringify(d.motivace)),
+    akcniPlan: d.akcniPlan, dusledek: d.dusledek, terminAkcniPlan: d.terminAkcniPlan,
+    ukoly: JSON.parse(JSON.stringify(d.ukoly))
+  });
+  // Formulář schválně nemažeme — po uložení chceš rovnou kopírovat/tisknout to samé.
+  // Vymaž ho ručně tlačítkem "Vymazat formulář", až budeš chtít začít nový 1-1.
+  saveState(); render();
+  toast('Záznam z 1-1 uložen — formulář zůstává vyplněný pro tisk/kopírování');
+}
+function clearOneOnOneDraft(aId){
+  if(!confirm('Vymazat rozepsaný formulář 1-1? (Uložená historie zůstane beze změny.)')) return;
+  resetDraft(aId);
+  render();
+}
+function deleteOneOnOneNote(aId, idx){
+  const hist = getOneOnOneHistory(aId);
+  hist.splice(idx,1);
+  saveState(); render();
+}
+
+/* ---- Editovatelné body Denní evidence ---- */
+function getHabitList(){ return dailyState.config.habits || DEFAULT_DAILY_HABITS; }
+function getWeeklyList(){ return dailyState.config.weekly || DEFAULT_WEEKLY_HABITS; }
+function getFieldList(){ return dailyState.config.fields || DEFAULT_DAILY_FIELDS; }
+function ensureOwnCopy(kind){
+  // při první úpravě zkopírujeme výchozí sadu do vlastního editovatelného pole
+  if(kind==='habits' && !dailyState.config.habits) dailyState.config.habits = JSON.parse(JSON.stringify(DEFAULT_DAILY_HABITS));
+  if(kind==='weekly' && !dailyState.config.weekly) dailyState.config.weekly = JSON.parse(JSON.stringify(DEFAULT_WEEKLY_HABITS));
+  if(kind==='fields' && !dailyState.config.fields) dailyState.config.fields = JSON.parse(JSON.stringify(DEFAULT_DAILY_FIELDS));
+}
+function addChecklistItem(kind){
+  ensureOwnCopy(kind);
+  const list = kind==='habits'?dailyState.config.habits:(kind==='weekly'?dailyState.config.weekly:dailyState.config.fields);
+  list.push({id: uid(), label: 'Nová položka'});
+  saveDailyState(); render();
+}
+function renameChecklistItem(kind, id, label){
+  ensureOwnCopy(kind);
+  const list = kind==='habits'?dailyState.config.habits:(kind==='weekly'?dailyState.config.weekly:dailyState.config.fields);
+  const it = list.find(x=>x.id===id); if(it){ it.label = label; saveDailyState(); }
+}
+function removeChecklistItem(kind, id){
+  ensureOwnCopy(kind);
+  const key = kind==='habits'?'habits':(kind==='weekly'?'weekly':'fields');
+  dailyState.config[key] = dailyState.config[key].filter(x=>x.id!==id);
+  saveDailyState(); render();
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ============== RENDER ROOT ============== */
+const GROUP_LABELS = {prace:'Denní / týdenní práce', nastaveni:'Nastavení (dělá se občas)'};
+const TABS = [
+  {id:'dashboard', label:'📊 Dashboard', group:'prace', desc:'Rychlý přehled celého týmu — kde je tým teď a co dnes potřebuje pozornost.'},
+  {id:'denni', label:'📅 Denní evidence', group:'prace', desc:'Denní zápis aktivit poradců + tvůj ranní checklist návyků — vyhodnocuje se druhý den.'},
+  {id:'plneni', label:'Skutečnost', group:'prace', desc:'Zadávání splněných čísel — jeden produkt, všichni poradci najednou po měsících.'},
+  {id:'report', label:'Report', group:'prace', desc:'Žebříček týmu pro jeden produkt — kdo plní, kdo zaostává, kolik komu chybí do měsíce / kvartálu / roku. Souhrnné tabulky pro e-mail najdeš tady dole.'},
+  {id:'detail', label:'Detail poradce', group:'prace', desc:'Všech 6 produktů u jednoho poradce, měsíc po měsíci, na jedné obrazovce.'},
+  {id:'kampane', label:'📣 Kampaně', group:'prace', desc:'Kampaně a leady po poradcích a týdnech — konverze, X-SELL formuláře, NOV, srovnání s minulým týdnem.'},
+  {id:'poradci', label:'Poradci', group:'nastaveni', desc:'Kdo je v týmu a kdy nastoupil / skončil — mění se jen se změnou v týmu.'},
+  {id:'plany', label:'Roční plány', group:'nastaveni', desc:'Roční cíl každého poradce pro každý produkt — nastavuje se na začátku roku.'},
+  {id:'rozlozeni', label:'Rozložení %', group:'nastaveni', desc:'Jedna křivka rozložení ročního plánu do měsíců — stejná pro celý tým a všechny produkty.'},
+  {id:'prerozdeleni', label:'Přerozdělení', group:'nastaveni', desc:'Přesun plánu mezi poradci (odchod, operativní změna) — používá se výjimečně.'},
+  {id:'doplnkova', label:'Doplňková data', group:'nastaveni', desc:'Nepravidelné podpůrné ukazatele (přesjednání, slevy, riziková/investiční složka).'},
+];
+
+function render(){
+  document.getElementById('yearInput').value = state.year;
+  const tabsEl = document.getElementById('tabs');
+  const groupOrder = ['prace','nastaveni'];
+  tabsEl.innerHTML = groupOrder.map(g=>{
+    const tabsHtml = TABS.filter(t=>t.group===g).map(t=>`<div class="tab ${activeTab===t.id?'active':''}" onclick="switchTab('${t.id}')">${t.label}</div>`).join('');
+    return `<div class="tab-group"><span class="tab-group-label">${GROUP_LABELS[g]}</span>${tabsHtml}</div>`;
+  }).join('');
+  const main = document.getElementById('main');
+  const current = TABS.find(t=>t.id===activeTab);
+  const descHtml = current ? `<p class="tabdesc">${current.desc}</p>` : '';
+  let body = '';
+  if(activeTab==='dashboard') body = renderDashboard();
+  else if(activeTab==='denni') body = renderDenniEvidence();
+  else if(activeTab==='poradci') body = renderPoradci();
+  else if(activeTab==='plany') body = renderPlany();
+  else if(activeTab==='rozlozeni') body = renderRozlozeni();
+  else if(activeTab==='prerozdeleni') body = renderPrerozdeleni();
+  else if(activeTab==='plneni') body = renderPlneni();
+  else if(activeTab==='report') body = renderReport();
+  else if(activeTab==='doplnkova') body = renderDoplnkova();
+  else if(activeTab==='detail') body = renderDetail();
+  else if(activeTab==='kampane') body = renderKampane();
+  main.innerHTML = descHtml + body;
+}
+function switchTab(id){ activeTab=id; render(); }
+document.getElementById('yearInput').addEventListener('change', async e=>{
+  state.year=e.target.value; saveState();
+  if(sb && myUser){ await loadFromSupabase(); render(); }
+});
+
+/* ============== TAB: PORADCI ============== */
+function renderPoradci(){
+  const teamLeaders = state.advisors.filter(a=>a.isTeamLeader);
+  const rows = state.advisors.map(a=>{
+    const startOpts = ['<option value="">— aktivní od začátku roku —</option>']
+      .concat(MONTHS.map((m,i)=>`<option value="${i+1}" ${a.startMonth==i+1?'selected':''}>nastoupil v ${m}</option>`)).join('');
+    const endOpts = ['<option value="">— aktivní celý rok —</option>']
+      .concat(MONTHS.map((m,i)=>`<option value="${i+1}" ${a.endMonth==i+1?'selected':''}>ukončil po ${m}</option>`)).join('');
+    let statusBadge = '<span class="badge active">aktivní</span>';
+    if(a.endMonth) statusBadge = '<span class="badge ended">ukončen</span>';
+    else if(isNovacek(a)) statusBadge = '<span class="badge start">nováček</span>';
+    const tlOpts = ['<option value="">— přímo pode mnou —</option>']
+      .concat(teamLeaders.filter(tl=>tl.id!==a.id).map(tl=>`<option value="${tl.id}" ${a.teamLeaderId===tl.id?'selected':''}>${escapeHtml(tl.name)}</option>`)).join('');
+    return `<tr>
+      <td style="width:110px;"><input type="text" value="${escapeHtml(a.code||'')}" placeholder="číslo" onchange="setAdvisorCode('${a.id}', this.value)"></td>
+      <td><input type="text" value="${escapeHtml(a.name)}" onchange="renameAdvisor('${a.id}', this.value)"></td>
+      <td style="text-align:center;"><select onchange="setStartMonth('${a.id}', this.value)">${startOpts}</select></td>
+      <td style="text-align:center;"><select onchange="setEndMonth('${a.id}', this.value)">${endOpts}</select></td>
+      <td style="text-align:center;">${statusBadge}</td>
+      <td style="text-align:center;"><input type="checkbox" ${a.isTeamLeader?'checked':''} onchange="setIsTeamLeader('${a.id}', this.checked)"></td>
+      <td style="text-align:center;"><select onchange="setTeamLeader('${a.id}', this.value)">${tlOpts}</select></td>
+      <td style="text-align:center;"><button class="danger" onclick="removeAdvisor('${a.id}','${escapeHtml(a.name)}')">Smazat</button></td>
+    </tr>`;
+  }).join('');
+  return `
+  <div class="card">
+    <h2>Poradci v týmu (${state.advisors.length})</h2>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th style="text-align:left;">Číslo</th><th style="text-align:left;">Jméno</th><th style="text-align:center;">Nástup</th><th style="text-align:center;">Konec spolupráce</th><th style="text-align:center;">Stav</th><th style="text-align:center;">Je TL</th><th style="text-align:center;">Nadřízený TL</th><th></th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="8" class="empty">Zatím žádní poradci — přidej prvního níže.</td></tr>'}</tbody>
+    </table>
+    </div>
+    <div class="row" style="margin-top:14px;">
+      <input type="text" id="newAdvisorName" placeholder="Jméno nového poradce" style="max-width:280px;" onkeydown="if(event.key==='Enter')addAdvisorFromInput()">
+      <button onclick="addAdvisorFromInput()">+ Přidat poradce</button>
+    </div>
+    <p class="small" style="margin-top:10px;">„Je TL" = team leader (i on je obchodník). Kdo nemá nadřízeného, je přímo pod tebou — podle toho jde filtrovat Dashboard a Report.</p>
+  </div>
+  ${Object.keys(state.yearArchive).length ? `
+  <div class="card">
+    <h2>Archiv minulých let</h2>
+    <p class="small" style="margin-bottom:10px;">Roky založené tlačítkem „Založit nový rok" v hlavičce — plány a skutečnost té sezóny, ke stažení jako záloha.</p>
+    ${Object.keys(state.yearArchive).sort().reverse().map(y=>`<div class="row" style="margin-bottom:6px;"><span class="pill">${y}</span><button class="secondary" onclick="downloadYearArchive('${y}')">⬇ Stáhnout JSON</button></div>`).join('')}
+  </div>` : ''}`;
+}
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function advisorLabel(a){ return (a.code ? a.code+' ' : '') + a.name; }
+async function dbUpdateAdvisor(id, fields){
+  if(!sb) return;
+  try{ const { error } = await sb.from('advisors').update(fields).eq('id', id); if(error) throw error; }
+  catch(e){ console.error('Uložení poradce selhalo', e); toast('Uložení se nepodařilo: ' + e.message); }
+}
+async function addAdvisorFromInput(){
+  const inp = document.getElementById('newAdvisorName');
+  const name = inp.value.trim();
+  if(!name){ toast('Zadej jméno poradce'); return; }
+  if(sb){
+    try{
+      const { data, error } = await sb.from('advisors').insert({ name }).select().single();
+      if(error) throw error;
+      state.advisors.push({id:data.id, name:data.name, code:'', endMonth:null, startMonth:null, isTeamLeader:false, teamLeaderId:null, hiddenDaily:false});
+      inp.value = '';
+      render();
+    }catch(e){ toast('Přidání se nepodařilo: ' + e.message); }
+    return;
+  }
+  state.advisors.push({id:uid(), name, code:'', endMonth:null, startMonth:null, isTeamLeader:false, teamLeaderId:null});
+  saveState(); render();
+}
+function setIsTeamLeader(id, val){
+  const a = advisor(id); if(!a) return;
+  a.isTeamLeader = !!val;
+  if(a.isTeamLeader) a.teamLeaderId = null; // TL je vždy přímo pod manažerem
+  dbUpdateAdvisor(id, {is_team_leader:a.isTeamLeader, team_leader_id:a.teamLeaderId});
+  saveState(); render();
+}
+function setTeamLeader(id, val){
+  const a = advisor(id); if(!a) return;
+  a.teamLeaderId = val || null;
+  dbUpdateAdvisor(id, {team_leader_id:a.teamLeaderId});
+  saveState(); render();
+}
+function toggleHiddenDaily(id){
+  const a = advisor(id); if(!a) return;
+  a.hiddenDaily = !a.hiddenDaily;
+  dbUpdateAdvisor(id, {hidden_daily:a.hiddenDaily});
+  saveState(); render();
+}
+function filteredAdvisors(filter){
+  filter = filter===undefined ? state._teamFilter : filter;
+  if(!filter || filter==='all') return state.advisors;
+  if(filter==='direct') return state.advisors.filter(a=>!a.teamLeaderId && !a.isTeamLeader);
+  return state.advisors.filter(a=> a.id===filter || a.teamLeaderId===filter);
+}
+function activeOnly(list){ return list.filter(a=>!a.endMonth); }
+function teamFilterOptionsHtml(){
+  const teamLeaders = state.advisors.filter(a=>a.isTeamLeader);
+  const cur = state._teamFilter || 'all';
+  const opts = [
+    `<option value="all" ${cur==='all'?'selected':''}>Celý tým</option>`,
+    `<option value="direct" ${cur==='direct'?'selected':''}>Jen přímo pode mnou</option>`,
+    ...teamLeaders.map(tl=>`<option value="${tl.id}" ${cur===tl.id?'selected':''}>Tým — ${escapeHtml(tl.name)}</option>`)
+  ];
+  return opts.join('');
+}
+function setAdvisorCode(id, val){
+  const a = advisor(id); if(!a) return;
+  a.code = val.trim();
+  dbUpdateAdvisor(id, {code:a.code});
+  saveState();
+}
+function renameAdvisor(id, name){
+  const a = advisor(id); if(!a) return;
+  a.name = name.trim() || a.name;
+  dbUpdateAdvisor(id, {name:a.name});
+  saveState();
+}
+function setEndMonth(id, val){
+  const a = advisor(id); if(!a) return;
+  a.endMonth = val ? Number(val) : null;
+  dbUpdateAdvisor(id, {end_month:a.endMonth});
+  saveState(); render();
+}
+function setStartMonth(id, val){
+  const a = advisor(id); if(!a) return;
+  a.startMonth = val ? Number(val) : null;
+  dbUpdateAdvisor(id, {start_month:a.startMonth});
+  saveState(); render();
+}
+async function removeAdvisor(id, name){
+  if(!confirm(`Opravdu smazat poradce „${name}"? Smažou se i jeho plány a rozložení.`)) return;
+  state.advisors = state.advisors.filter(a=>a.id!==id);
+  delete state.plans[id]; delete state.adj[id]; delete state.actual[id]; delete state.extra[id];
+  if(sb){
+    try{ const { error } = await sb.from('advisors').delete().eq('id', id); if(error) throw error; }
+    catch(e){ toast('Smazání v databázi selhalo: ' + e.message); }
+  }
+  saveState(); render();
+}
+
+/* ============== TAB: ROČNÍ PLÁNY ============== */
+function renderPlany(){
+  if(state.advisors.length===0) return emptyAdvisorsCard();
+  const cols = METRICS.map(m=>`<th>${m.name}<br><span class="small" style="color:#cdd;">${m.unit}</span></th>`).join('');
+  const rows = state.advisors.map(a=>{
+    const cells = METRICS.map(m=>`<td><input type="number" min="0" value="${getPlan(a.id,m.id)||''}" placeholder="0" onchange="setPlan('${a.id}','${m.id}', this.value); refreshTotals()"></td>`).join('');
+    return `<tr><td>${escapeHtml(a.name)} ${statusBadgeHtml(a)}</td>${cells}</tr>`;
+  }).join('');
+  const totalCells = METRICS.map(m=>{
+    const sum = state.advisors.reduce((s,a)=>s+getPlan(a.id,m.id),0);
+    return `<td id="tot-${m.id}">${fmt(m.id,sum)}</td>`;
+  }).join('');
+  return `
+  <div class="card">
+    <h2>Roční plán ${state.year} — podle poradce a produktu</h2>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th style="text-align:left;">Poradce</th>${cols}</tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr class="total"><td>Celkem tým (součet poradců)</td>${totalCells}</tr></tfoot>
+    </table>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Reálný týmový plán (od vedení)</h2>
+    <p class="small" style="margin-bottom:10px;">Nepovinné. Skutečný cíl od vedení (obvykle nižší než součet poradců) — když ho vyplníš, Dashboard/Report ho použijí místo součtu.</p>
+    <div class="tablewrap">
+    <table>
+      <thead><tr>${METRICS.map(m=>`<th>${m.name}<br><span class="small" style="color:#cdd;">${m.unit}</span></th>`).join('')}</tr></thead>
+      <tbody><tr>${METRICS.map(m=>`<td><input type="number" min="0" value="${state.realTeamPlan[m.id]||''}" placeholder="${fmtNum(state.advisors.reduce((s,a)=>s+getPlan(a.id,m.id),0))}" onchange="setRealTeamPlan('${m.id}', this.value)"></td>`).join('')}</tr></tbody>
+    </table>
+    </div>
+    <p class="small" style="margin-top:8px;">Placeholder v políčku ukazuje součet poradců pro srovnání — je to jen nápověda, ne uložená hodnota.</p>
+  </div>`;
+}
+function setRealTeamPlan(mId, val){
+  const amount = Math.max(0, Number(val)||0);
+  const year = Number(state.year) || new Date().getFullYear();
+  if(!amount){
+    delete state.realTeamPlan[mId];
+    if(sb && myUser) sb.from('real_team_plan').delete().eq('owner_id',myUser.id).eq('year',year).eq('metric_id',mId).then(({error})=>{ if(error) console.error(error); });
+  }else{
+    state.realTeamPlan[mId] = amount;
+    if(sb && myUser) sb.from('real_team_plan').upsert({owner_id:myUser.id, year, metric_id:mId, amount}).then(({error})=>{ if(error){ console.error(error); toast('Uložení reálného plánu selhalo: '+error.message); } });
+  }
+  saveState();
+}
+function refreshTotals(){
+  METRICS.forEach(m=>{
+    const sum = state.advisors.reduce((s,a)=>s+getPlan(a.id,m.id),0);
+    const el = document.getElementById('tot-'+m.id);
+    if(el) el.textContent = fmt(m.id, sum);
+  });
+}
+function emptyAdvisorsCard(){
+  return `<div class="card"><p class="empty">Nejdřív přidej poradce v záložce „Poradci".</p></div>`;
+}
+
+/* ============== TAB: ROZLOŽENÍ % ============== */
+function renderRozlozeni(){
+  const arr = getDistGlobal();
+  const cells = arr.map((v,i)=>`<td><input type="number" min="0" max="100" value="${v||''}" placeholder="0" onchange="setDistGlobalCell(${i}, this.value); refreshDistRowGlobal()"></td>`).join('');
+  const sum = distSumGlobal();
+
+  return `
+  <div class="card">
+    <h2>Rozložení ročního plánu na měsíce (%)</h2>
+    <p class="small" style="margin-bottom:12px;">Jedna křivka pro celý tým, platí pro produkty v Kč. <b>Bankovní účty a X-SELL se vždy dělí rovnoměrně</b> (1/12), bez ohledu na tuto křivku.</p>
+    <div class="row" style="margin-bottom:14px;">
+      <button class="secondary" onclick="spreadEvenlyGlobal()">Rozložit rovnoměrně</button>
+      <button class="secondary" onclick="clearDistGlobal()">Vynulovat</button>
+    </div>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th style="text-align:left;">Měsíční rozložení</th>${MONTHS.map(m=>`<th>${m}</th>`).join('')}<th>Součet</th></tr></thead>
+      <tbody><tr><td>% z ročního plánu</td>${cells}<td id="sumg" class="${Math.round(sum)===100?'sum-ok':'sum-bad'}">${Math.round(sum*10)/10}%</td></tr></tbody>
+    </table>
+    </div>
+    <p class="small" style="margin-top:10px;">Součet by měl dát <b>100 %</b> — zeleně = OK, červeně = nesedí.</p>
+  </div>`;
+}
+function refreshDistRowGlobal(){
+  const sum = distSumGlobal();
+  const el = document.getElementById('sumg');
+  if(el){ el.textContent = (Math.round(sum*10)/10)+'%'; el.className = Math.round(sum)===100?'sum-ok':'sum-bad'; }
+}
+function spreadEvenlyGlobal(){
+  const arr = getDistGlobal();
+  for(let i=0;i<12;i++) arr[i] = Math.round((100/12)*100)/100;
+  syncDistGlobal();
+  saveState(); render();
+}
+function clearDistGlobal(){
+  if(!confirm('Vynulovat měsíční rozložení procent?')) return;
+  state.distGlobal = Array(12).fill(0);
+  syncDistGlobal();
+  saveState(); render();
+}
+
+/* ============== TAB: PŘEROZDĚLENÍ ============== */
+function renderPrerozdeleni(){
+  if(state.advisors.length===0) return emptyAdvisorsCard();
+  const f = state._transferForm || {
+    metricId: METRICS[0].id, sourceType:'advisor', sourceId: state.advisors[0].id,
+    fromMonth:1, toMonth:12, targetFromMonth:1, targetToMonth:12, amount:0, method:'equal', targets:{}, note:'', markEnded:false
+  };
+  state._transferForm = f;
+  if(f.targetFromMonth===undefined) f.targetFromMonth = f.fromMonth;
+  if(f.targetToMonth===undefined) f.targetToMonth = f.toMonth;
+
+  const metricOpts = METRICS.map(m=>`<option value="${m.id}" ${m.id===f.metricId?'selected':''}>${m.name}</option>`).join('');
+  const advisorOpts = state.advisors.map(a=>`<option value="${a.id}" ${a.id===f.sourceId?'selected':''}>${escapeHtml(a.name)}</option>`).join('');
+  const monthOpts = (sel)=>MONTHS.map((m,i)=>`<option value="${i+1}" ${i+1===sel?'selected':''}>${m}</option>`).join('');
+
+  // auto-calc remaining if source = advisor
+  let computedRemaining = 0;
+  if(f.sourceType==='advisor'){
+    for(let i=f.fromMonth-1;i<12;i++) computedRemaining += baseMonthly(f.sourceId, f.metricId, i);
+    if(!f.amount) f.amount = Math.round(computedRemaining);
+  }
+
+  const targetCandidates = state.advisors.filter(a=> f.sourceType!=='advisor' || a.id!==f.sourceId);
+  const targetChecks = targetCandidates.map(a=>{
+    const checked = !!f.targets[a.id];
+    const val = f.targets[a.id]?.amount || '';
+    return `<div class="row" style="justify-content:space-between;">
+      <label><input type="checkbox" ${checked?'checked':''} onchange="toggleTarget('${a.id}', this.checked)"> ${escapeHtml(a.name)}</label>
+      ${f.method==='manual' && checked ? `<input type="number" min="0" style="width:110px;" value="${val}" placeholder="Kč/ks" onchange="setTargetAmount('${a.id}', this.value)">` : ''}
+    </div>`;
+  }).join('') || '<span class="small">Nejsou k dispozici žádní další poradci.</span>';
+
+  const targetSum = Object.values(f.targets).reduce((s,t)=>s+(Number(t.amount)||0),0);
+  const totalToSplit = Number(f.amount)||0;
+  const checkedCount = Object.keys(f.targets).length;
+
+  const logHtml = state.transferLog.length ? state.transferLog.slice().reverse().map(l=>{
+    const targetsTxt = l.targets.map(t=>`${escapeHtml(t.name)}: +${fmtNum(t.perMonth)}/měs.`).join(', ');
+    const tgtFrom = l.targetFromMonth || l.fromMonth, tgtTo = l.targetToMonth || l.toMonth;
+    const sameRange = tgtFrom===l.fromMonth && tgtTo===l.toMonth;
+    return `<div class="logitem">
+      <div><b>${metric(l.metricId).name}</b> · zdroj ${MONTHS[l.fromMonth-1]}–${MONTHS[l.toMonth-1]}${sameRange?'':` · rozloženo ${MONTHS[tgtFrom-1]}–${MONTHS[tgtTo-1]}`} ${state.year}
+      <button class="danger" style="float:right;padding:3px 10px;font-size:11px;" onclick="revertTransfer('${l.id}')">Vrátit zpět</button></div>
+      <div class="small" style="margin-top:4px;">Zdroj: ${escapeHtml(l.fromLabel)}${l.fromPerMonth?` (−${fmtNum(l.fromPerMonth)}/měs.)`:''}</div>
+      <div class="small">Komu: ${targetsTxt}</div>
+      ${l.note?`<div class="small" style="margin-top:4px;">Poznámka: ${escapeHtml(l.note)}</div>`:''}
+    </div>`;
+  }).join('') : '<p class="empty">Zatím žádné přerozdělení.</p>';
+
+  return `
+  <div class="grid2">
+    <div class="card">
+      <h2>Nové přerozdělení plánu</h2>
+
+      <div class="field">
+        <label>Produkt</label>
+        <select onchange="updateTransferForm('metricId', this.value)">${metricOpts}</select>
+      </div>
+
+      <div class="field">
+        <label>Zdroj</label>
+        <div class="row">
+          <label><input type="radio" name="srcType" ${f.sourceType==='advisor'?'checked':''} onchange="updateTransferForm('sourceType','advisor')"> Od poradce (ukončil / bere se mu část)</label>
+        </div>
+        <div class="row">
+          <label><input type="radio" name="srcType" ${f.sourceType==='manual'?'checked':''} onchange="updateTransferForm('sourceType','manual')"> Ruční částka (bez konkrétního zdroje)</label>
+        </div>
+      </div>
+
+      ${f.sourceType==='advisor' ? `
+      <div class="field">
+        <label>Poradce (zdroj)</label>
+        <select onchange="updateTransferForm('sourceId', this.value)">${advisorOpts}</select>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:1;">
+          <label>Rozdělit od měsíce</label>
+          <select onchange="updateTransferForm('fromMonth', Number(this.value))">${monthOpts(f.fromMonth)}</select>
+        </div>
+        <div class="field" style="flex:1;">
+          <label>Do měsíce</label>
+          <select onchange="updateTransferForm('toMonth', Number(this.value))">${monthOpts(f.toMonth)}</select>
+        </div>
+      </div>
+      <div class="pill">Vypočtený zbývající plán zdroje: <b style="margin-left:6px;">${fmt(f.metricId, computedRemaining)}</b></div>
+      <div class="field" style="margin-top:10px;">
+        <label>Částka k rozdělení (lze upravit)</label>
+        <input type="number" min="0" value="${f.amount || Math.round(computedRemaining)}" onchange="updateTransferForm('amount', this.value)">
+      </div>
+      <label class="row" style="margin-top:6px;"><input type="checkbox" ${f.markEnded?'checked':''} onchange="updateTransferForm('markEnded', this.checked)"> Zároveň označit poradce jako ukončeného od tohoto měsíce</label>
+
+      <h3>Komu a kdy to přidat</h3>
+      <div class="row">
+        <div class="field" style="flex:1;">
+          <label>Rozložit poradcům od měsíce</label>
+          <select onchange="updateTransferForm('targetFromMonth', Number(this.value))">${monthOpts(f.targetFromMonth)}</select>
+        </div>
+        <div class="field" style="flex:1;">
+          <label>Do měsíce</label>
+          <select onchange="updateTransferForm('targetToMonth', Number(this.value))">${monthOpts(f.targetToMonth)}</select>
+        </div>
+      </div>
+      <p class="small" style="margin-top:-6px;margin-bottom:10px;">Může se lišit od zdrojového období výš — např. plán zdroje počítáš od května, ale poradcům to rozložíš až od července do prosince.</p>
+      ` : `
+      <div class="row">
+        <div class="field" style="flex:1;">
+          <label>Od měsíce</label>
+          <select onchange="updateTransferForm('fromMonth', Number(this.value))">${monthOpts(f.fromMonth)}</select>
+        </div>
+        <div class="field" style="flex:1;">
+          <label>Do měsíce</label>
+          <select onchange="updateTransferForm('toMonth', Number(this.value))">${monthOpts(f.toMonth)}</select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Částka k rozdělení</label>
+        <input type="number" min="0" value="${f.amount||''}" placeholder="0" onchange="updateTransferForm('amount', this.value)">
+      </div>
+      `}
+
+      <h3>Komu rozdělit</h3>
+      <div class="row" style="margin-bottom:8px;">
+        <label><input type="radio" name="method" ${f.method==='equal'?'checked':''} onchange="updateTransferForm('method','equal')"> Rovnoměrně mezi vybrané</label>
+        <label><input type="radio" name="method" ${f.method==='manual'?'checked':''} onchange="updateTransferForm('method','manual')"> Ručně zadám částku každému</label>
+      </div>
+      <div class="checklist">${targetChecks}</div>
+      ${f.method==='manual' ? `<p class="small" style="margin-top:6px;">Součet zadaných částek: <b class="${Math.round(targetSum)===Math.round(totalToSplit)&&totalToSplit>0?'sum-ok':'sum-bad'}">${fmtNum(targetSum)}</b> / má být ${fmtNum(totalToSplit)}</p>` : `<p class="small" style="margin-top:6px;">Vybráno poradců: ${checkedCount}${checkedCount>0?` → každému ${fmtNum(totalToSplit/checkedCount)}`:''}</p>`}
+
+      <div class="field" style="margin-top:10px;">
+        <label>Poznámka (nepovinné)</label>
+        <input type="text" value="${escapeHtml(f.note)}" placeholder="např. odchod k 30.6., přesun na zbytek týmu" onchange="updateTransferForm('note', this.value)">
+      </div>
+
+      <div class="actions-right">
+        <button onclick="applyTransfer()">Provést přerozdělení</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Historie přerozdělení</h2>
+      ${logHtml}
+    </div>
+  </div>`;
+}
+function updateTransferForm(key, val){
+  const f = state._transferForm;
+  f[key] = val;
+  if(key==='sourceType' || key==='sourceId' || key==='fromMonth'){ f.amount = 0; } // recompute suggestion
+  if(key==='method' && val==='equal'){ /* keep targets checked state */ }
+  render();
+}
+function toggleTarget(id, checked){
+  const f = state._transferForm;
+  if(checked) f.targets[id] = f.targets[id] || {amount:0};
+  else delete f.targets[id];
+  render();
+}
+function setTargetAmount(id, val){
+  const f = state._transferForm;
+  if(f.targets[id]) f.targets[id].amount = Number(val)||0;
+}
+async function applyTransfer(){
+  const f = state._transferForm;
+  const total = Number(f.amount)||0;
+  const ids = Object.keys(f.targets);
+  if(total<=0){ toast('Zadej částku k rozdělení větší než 0'); return; }
+  if(ids.length===0){ toast('Vyber alespoň jednoho poradce, kterému se má plán přidat'); return; }
+
+  const realCurrentMonth = state.currentMonth || (new Date()).getMonth()+1;
+  if(f.fromMonth < realCurrentMonth){
+    const useCurrent = confirm(`Zvolil jsi „od ${MONTHS[f.fromMonth-1]}", ale aktuální měsíc appky je ${MONTHS[realCurrentMonth-1]}.\n\nOK = přerozdělit až od ${MONTHS[realCurrentMonth-1]} (${MONTHS[f.fromMonth-1]}–${MONTHS[realCurrentMonth-2] || MONTHS[f.fromMonth-1]} zůstanou beze změny).\nZrušit = opravdu zahrnout i už proběhlé měsíce ${MONTHS[f.fromMonth-1]}–${MONTHS[realCurrentMonth-1]}.`);
+    if(useCurrent){
+      f.fromMonth = realCurrentMonth;
+      if(f.toMonth < f.fromMonth) f.toMonth = f.fromMonth;
+      if(f.targetFromMonth < f.fromMonth) f.targetFromMonth = f.fromMonth;
+    }
+  }
+
+  // cílové období (komu a kdy se to přidá) — u zdroje "poradce" může být jiné než zdrojové období výš
+  const targetFrom = f.sourceType==='advisor' ? f.targetFromMonth : f.fromMonth;
+  const targetTo = f.sourceType==='advisor' ? f.targetToMonth : f.toMonth;
+  const numMonths = (targetTo - targetFrom + 1);
+  if(numMonths<1){ toast('Neplatný rozsah měsíců pro rozložení na poradce'); return; }
+  const sourceNumMonths = (f.toMonth - f.fromMonth + 1);
+  if(f.sourceType==='advisor' && sourceNumMonths<1){ toast('Neplatný rozsah zdrojového období'); return; }
+
+  let perTargetTotal = {};
+  if(f.method==='equal'){
+    const share = total/ids.length;
+    ids.forEach(id=>perTargetTotal[id]=share);
+  }else{
+    const sum = ids.reduce((s,id)=>s+(Number(f.targets[id].amount)||0),0);
+    if(Math.round(sum)!==Math.round(total)){ toast('Součet ručně zadaných částek musí odpovídat celkové částce'); return; }
+    ids.forEach(id=>perTargetTotal[id]=Number(f.targets[id].amount)||0);
+  }
+
+  const logTargets = [];
+  ids.forEach(id=>{
+    const perMonth = perTargetTotal[id]/numMonths;
+    for(let m=targetFrom; m<=targetTo; m++) addAdjCell(id, f.metricId, m-1, perMonth);
+    logTargets.push({id, name: advisor(id).name, perMonth});
+  });
+
+  let fromLabel = 'Ruční částka';
+  let fromPerMonth = 0;
+  if(f.sourceType==='advisor'){
+    const src = advisor(f.sourceId);
+    fromLabel = src.name;
+    fromPerMonth = total/sourceNumMonths;
+    for(let m=f.fromMonth; m<=f.toMonth; m++) addAdjCell(f.sourceId, f.metricId, m-1, -fromPerMonth);
+    if(f.markEnded){
+      src.endMonth = f.fromMonth-1 > 0 ? f.fromMonth-1 : f.fromMonth;
+      dbUpdateAdvisor(src.id, {end_month: src.endMonth});
+    }
+  }
+
+  const year = Number(state.year) || new Date().getFullYear();
+  let logId = uid();
+  if(sb){
+    try{
+      const { data, error } = await sb.from('transfer_log').insert({
+        metric_id: f.metricId, from_advisor_id: f.sourceType==='advisor'?f.sourceId:null,
+        from_label: fromLabel, from_per_month: fromPerMonth,
+        from_month: f.fromMonth, to_month: f.toMonth,
+        target_from_month: targetFrom, target_to_month: targetTo,
+        targets: logTargets, note: f.note, year
+      }).select().single();
+      if(error) throw error;
+      logId = data.id;
+    }catch(e){ console.error(e); toast('Uložení přerozdělení do databáze selhalo: ' + e.message); }
+    // ulož všechny dotčené měsíční úpravy
+    ids.forEach(id=>{ for(let m=targetFrom; m<=targetTo; m++) syncAdjCell(id, f.metricId, m-1); });
+    if(f.sourceType==='advisor'){ for(let m=f.fromMonth; m<=f.toMonth; m++) syncAdjCell(f.sourceId, f.metricId, m-1); }
+  }
+
+  state.transferLog.push({
+    id: logId, date: new Date().toISOString(), metricId: f.metricId,
+    fromLabel, fromId: f.sourceType==='advisor'?f.sourceId:null, fromPerMonth,
+    fromMonth: f.fromMonth, toMonth: f.toMonth, targetFromMonth: targetFrom, targetToMonth: targetTo, targets: logTargets, note: f.note
+  });
+
+  state._transferForm = null;
+  saveState(); toast('Přerozdělení provedeno'); render();
+}
+async function revertTransfer(logId){
+  const l = state.transferLog.find(x=>x.id===logId);
+  if(!l) return;
+  if(!confirm('Vrátit toto přerozdělení zpět?')) return;
+  const tgtFrom = l.targetFromMonth || l.fromMonth, tgtTo = l.targetToMonth || l.toMonth;
+  if(l.fromId && l.fromPerMonth){
+    for(let m=l.fromMonth; m<=l.toMonth; m++) addAdjCell(l.fromId, l.metricId, m-1, l.fromPerMonth);
+  }
+  l.targets.forEach(t=>{
+    for(let m=tgtFrom; m<=tgtTo; m++) addAdjCell(t.id, l.metricId, m-1, -t.perMonth);
+  });
+  if(sb){
+    if(l.fromId){ for(let m=l.fromMonth; m<=l.toMonth; m++) syncAdjCell(l.fromId, l.metricId, m-1); }
+    l.targets.forEach(t=>{ for(let m=tgtFrom; m<=tgtTo; m++) syncAdjCell(t.id, l.metricId, m-1); });
+    try{ const { error } = await sb.from('transfer_log').delete().eq('id', logId); if(error) throw error; }
+    catch(e){ console.error(e); toast('Smazání v databázi selhalo: ' + e.message); }
+  }
+  state.transferLog = state.transferLog.filter(x=>x.id!==logId);
+  saveState(); toast('Přerozdělení vráceno zpět'); render();
+}
+
+/* ============== TAB: PŘEHLED TÝMU ============== */
+function renderPrehled(){
+  if(state.advisors.length===0) return emptyAdvisorsCard();
+  const teamAdvisorsP = activeOnly(filteredAdvisors(state._teamFilter));
+  const selMetric = state._selMetricOverview || METRICS[0].id;
+  state._selMetricOverview = selMetric;
+  const metricOpts = METRICS.map(m=>`<option value="${m.id}" ${m.id===selMetric?'selected':''}>${m.name}</option>`).join('')
+    + `<option value="__nov__" ${selMetric==='__nov__'?'selected':''}>Součet (Život+Domov+Auto)</option>`;
+
+  const rows = teamAdvisorsP.map(a=>{
+    let cells = '', total = 0;
+    for(let i=0;i<12;i++){
+      let v;
+      if(selMetric==='__nov__') v = finalMonthly(a.id,'zivot',i)+finalMonthly(a.id,'domov',i)+finalMonthly(a.id,'auto',i);
+      else v = finalMonthly(a.id, selMetric, i);
+      total += v;
+      const ended = isEndedAt(a, i+1) || isBeforeStart(a, i+1);
+      cells += `<td style="${ended?'color:#c0c8ce;':''}">${fmtNum(v)}</td>`;
+    }
+    return `<tr><td>${escapeHtml(a.name)} ${statusBadgeHtml(a)}</td>${cells}<td><b>${fmtNum(total)}</b></td></tr>`;
+  }).join('');
+
+  const monthTotals = [];
+  let grand = 0;
+  for(let i=0;i<12;i++){
+    let s=0;
+    teamAdvisorsP.forEach(a=>{
+      s += selMetric==='__nov__' ? (finalMonthly(a.id,'zivot',i)+finalMonthly(a.id,'domov',i)+finalMonthly(a.id,'auto',i)) : finalMonthly(a.id,selMetric,i);
+    });
+    monthTotals.push(s); grand += s;
+  }
+  const totalRow = `<tr class="total"><td>Celkem tým</td>${monthTotals.map(v=>`<td>${fmtNum(v)}</td>`).join('')}<td>${fmtNum(grand)}</td></tr>`;
+
+  const unitLabel = selMetric==='__nov__' ? 'Kč' : metric(selMetric).unit;
+
+  return `
+  <div class="card">
+    <h2>Měsíční tabulka — jeden produkt, všichni poradci, 12 měsíců</h2>
+    <div class="row" style="margin-bottom:12px;">
+      <label class="small" style="font-weight:700;">Produkt:</label>
+      <select onchange="state._selMetricOverview=this.value; render()">${metricOpts}</select>
+      <label class="small" style="font-weight:700;margin-left:10px;">Zobrazit:</label>
+      <select onchange="state._teamFilter=this.value; render()">${teamFilterOptionsHtml()}</select>
+      <span class="small">jednotka: ${unitLabel}</span>
+      <button class="secondary" onclick="copyTable('prehledTable')">📋 Kopírovat tabulku (do e-mailu)</button>
+      <button class="secondary" onclick="exportXlsx('prehledTable','Prehled_tym')">⬇ Export do Excelu</button>
+    </div>
+    <div class="tablewrap">
+    <table id="prehledTable">
+      <thead><tr><th style="text-align:left;">Poradce</th>${MONTHS.map(m=>`<th>${m}</th>`).join('')}<th>Celkem rok</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot>${totalRow}</tfoot>
+    </table>
+    </div>
+  </div>`;
+}
+
+/* ============== TAB: DETAIL PORADCE ============== */
+function renderDetail(){
+  if(state.advisors.length===0) return emptyAdvisorsCard();
+  const sel = state._selAdvisorDetail || state.advisors[0].id;
+  state._selAdvisorDetail = sel;
+  const a = advisor(sel);
+  const options = state.advisors.map(x=>`<option value="${x.id}" ${x.id===sel?'selected':''}>${escapeHtml(x.name)}</option>`).join('');
+  const cm = state.currentMonth || (new Date()).getMonth()+1;
+  const showExtra = !!state._showExtraInDetail;
+  const tlMode = a.isTeamLeader ? (state._tlViewMode || 'self') : 'self';
+  const scopeIds = a.isTeamLeader && tlMode==='team' ? scopeIdsFor(sel) : [sel];
+  const teamMembers = a.isTeamLeader ? state.advisors.filter(x=>x.teamLeaderId===sel) : [];
+  const tlToggleHtml = a.isTeamLeader ? `
+    <div class="row" style="margin-left:10px;">
+      <label class="small" style="font-weight:700;">Zobrazit jako:</label>
+      <button class="${tlMode==='self'?'':'secondary'}" style="padding:5px 10px;font-size:12px;" onclick="state._tlViewMode='self'; render()">Obchodník</button>
+      <button class="${tlMode==='team'?'':'secondary'}" style="padding:5px 10px;font-size:12px;" onclick="state._tlViewMode='team'; render()">Team leader (+ tým, ${teamMembers.length})</button>
+    </div>` : '';
+
+  const rows = METRICS.map(m=>{
+    let cells='', total=0;
+    for(let i=0;i<12;i++){
+      const v = scopedFinalMonthly(scopeIds,m.id,i);
+      total+=v;
+      const ended = isEndedAt(a,i+1) || isBeforeStart(a,i+1);
+      cells += `<td style="${ended && scopeIds.length===1?'color:#c0c8ce;':''}">${fmtNum(v)}</td>`;
+    }
+    const plan = scopedPlan(scopeIds,m.id);
+    const diff = total - plan;
+    return `<tr><td>${m.name} <span class="small">(${m.unit})</span></td>${cells}<td><b>${fmtNum(total)}</b></td><td class="small">${plan?((diff>=0?'+':'')+fmtNum(diff)):'-'}</td></tr>`;
+  }).join('');
+
+  // Zbývá dodat — do měsíce / kvartálu / roku, pro všech 6 produktů
+  const qEndDet = MONTH_QUARTER[cm-1]*3;
+  const zbyvaRows = METRICS.map(m=>{
+    const planMesic = scopedFinalMonthly(scopeIds,m.id,cm-1), actualMesic = scopedActualAt(scopeIds,m.id,cm-1);
+    let planKvartal=0, actualKvartal=0;
+    for(let i=cm-1;i<qEndDet;i++){ planKvartal += scopedFinalMonthly(scopeIds,m.id,i); actualKvartal += scopedActualAt(scopeIds,m.id,i); }
+    const planRok = scopedPlan(scopeIds,m.id);
+    let actualRok=0; for(let i=0;i<12;i++) actualRok += scopedActualAt(scopeIds,m.id,i);
+    const zM = planMesic-actualMesic, zQ = planKvartal-actualKvartal, zR = planRok-actualRok;
+    const fz = z => z>=0 ? fmt(m.id,z) : ('−'+fmt(m.id,Math.abs(z)));
+    return `<tr><td>${m.name}</td><td class="${plneniBgClass(plneniPct(planMesic,actualMesic))}">${fz(zM)}</td><td class="${plneniBgClass(plneniPct(planKvartal,actualKvartal))}">${fz(zQ)}</td><td class="${plneniBgClass(plneniPct(planRok,actualRok))}"><b>${fz(zR)}</b></td></tr>`;
+  }).join('');
+
+  const extraRows = EXTRA_FIELDS.map(f=>{
+    const v = getExtra(sel, f.id);
+    return `<tr><td>${f.label} <span class="small">(${f.product})</span></td><td>${v==null?'—':v+' %'}</td></tr>`;
+  }).join('') + (()=>{
+    const rizik = getExtra(sel,'rizikova_zivot');
+    const inv = rizik!=null ? (100-rizik) : null;
+    return `<tr><td>Investiční složka <span class="small">(Náš život, dopočet)</span></td><td>${inv==null?'—':inv+' %'}</td></tr>`;
+  })();
+
+  const history = getOneOnOneHistory(sel);
+  const draft = getDraft(sel);
+  const openMap = state._openHistory || {};
+
+  const historyHtml = history.length ? history.slice().reverse().map((h,revIdx)=>{
+    const idx = history.length-1-revIdx;
+    const key = sel+'-'+idx;
+    const isOpen = !!openMap[key];
+    const ukolyTxt = (h.ukoly&&h.ukoly.length) ? h.ukoly.map(u=>`${u.kdo}: ${escapeHtml(u.text)}${u.termin?` (do ${formatDateCz(u.termin)})`:''}`).join('<br>') : '';
+    const misto = h.meta && h.meta.misto ? ` · ${escapeHtml(h.meta.misto)}` : '';
+    const summary = (h.note||h.prep||'').slice(0,90);
+    return `<div class="logitem">
+      <div onclick="toggleHistoryOpen('${sel}',${idx})" style="cursor:pointer;">
+        <b>${formatDateCz(h.date)}${misto}</b> <span class="small">${isOpen?'▲ skrýt':'▼ '+escapeHtml(summary)}</span>
+        <button class="danger" style="float:right;padding:2px 8px;font-size:11px;" onclick="event.stopPropagation(); deleteOneOnOneNote('${sel}',${idx})">Smazat</button>
+        <button class="secondary" style="float:right;padding:2px 8px;font-size:11px;margin-right:6px;" onclick="event.stopPropagation(); reopenOneOnOne('${sel}',${idx})">↺ Načíst do formuláře</button>
+      </div>
+      ${isOpen ? `
+      <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
+        ${h.meta?`<div class="small">Místo: ${escapeHtml(h.meta.misto||'—')} · Přítomní: ${escapeHtml(h.meta.pritomni||'—')} · Čas: ${escapeHtml(h.meta.cas||'—')}</div>`:''}
+        ${h.prep?`<div style="margin-top:6px;"><i>Příprava:</i> ${escapeHtml(h.prep)}</div>`:''}
+        <div style="margin-top:6px;white-space:pre-wrap;">${escapeHtml(h.note||'')}</div>
+        ${h.motivace && h.motivace.checked?`<div style="margin-top:6px;"><i>Motivace:</i> ${escapeHtml(h.motivace.popis||'')} — odměna: ${escapeHtml(h.motivace.odmena||'')}${h.motivace.termin?` (do ${formatDateCz(h.motivace.termin)})`:''}</div>`:''}
+        ${h.akcniPlan?`<div style="margin-top:6px;"><i>Akční plán:</i> ${escapeHtml(h.akcniPlan)}${h.dusledek?` (důsledek: ${escapeHtml(h.dusledek)})`:''}${h.terminAkcniPlan?` (do ${formatDateCz(h.terminAkcniPlan)})`:''}</div>`:''}
+        ${ukolyTxt?`<div style="margin-top:6px;"><i>Úkoly:</i><br>${ukolyTxt}</div>`:''}
+      </div>` : ''}
+    </div>`;
+  }).join('') : '<p class="empty">Zatím žádné záznamy z 1-1.</p>';
+
+  const blocks1on1 = getBlocks1on1();
+  const monthOptsAdd = MONTHS.map((mo,i)=>`<option value="${i+1}" ${i+1===cm?'selected':''}>${mo}</option>`).join('');
+  const sliceOptsAdd = Object.entries(SLICE_LABELS_SHORT).map(([k,label])=>`<option value="${k}">${label}</option>`).join('');
+  const blocksChips = blocks1on1.map((b,idx)=>`<span class="pill" style="margin-right:6px;margin-bottom:6px;">${slice1LabelFor(b.slice,b.month)} <button class="danger" style="padding:1px 7px;font-size:11px;margin-left:6px;" onclick="removeBlock1on1(${idx})">✕</button></span>`).join('') || '<span class="empty">Zatím žádný výstup — přidej ho výš.</span>';
+
+  const showCampaigns1on1 = !!state._showCampaigns1on1;
+  const campaignWeekDate1on1 = state._campaignWeekDate1on1 || todayStr();
+  state._campaignWeekDate1on1 = campaignWeekDate1on1;
+  const campaignWeekKey1on1 = weekKeyFor(campaignWeekDate1on1);
+  const campaignWeekLabel1on1 = (()=>{ const dd=new Date(campaignWeekDate1on1+'T00:00:00'); return `${isoWeekNumber(dd)}. týden ${dd.getFullYear()}`; })();
+
+  function buildZapisText(){
+    const lines = [
+      `Zápis 1-1 — ${a.name}${tlMode==='team'?' (Team leader + tým)':''}`,
+      `Den: ${formatDateCz(draft.meta.datum || todayStr())}    Místo: ${draft.meta.misto||'—'}    Čas: ${draft.meta.cas||'—'}`,
+      `Přítomní: ${draft.meta.pritomni||'—'}`,
+    ];
+    const pad = (s,n)=> (s+'').padEnd(n,' ');
+    const plneniBlock = (sliceKey, label, cm1) => {
+      lines.push(``, `Plnění — ${label}:`, `Produkt          Plán            Skutečnost      Zbývá dodat     Plnění %`);
+      METRICS.forEach(m=>{
+        const v = scopedSliceValues(scopeIds,m.id,sliceKey,cm1);
+        const z = v.plan-v.actual;
+        const p = plneniPct(v.plan,v.actual);
+        lines.push(`${pad(m.name,16)} ${pad(fmt(m.id,v.plan),15)} ${pad(fmt(m.id,v.actual),15)} ${pad(z>=0?fmt(m.id,z):('−'+fmt(m.id,Math.abs(z))),15)} ${p}%`);
+      });
+    };
+    blocks1on1.forEach(b=>plneniBlock(b.slice, slice1LabelFor(b.slice,b.month), b.month));
+    if(showCampaigns1on1 && state.campaigns.length){
+      lines.push(``, `Kampaně a leady — ${campaignWeekLabel1on1}:`);
+      state.campaigns.forEach(c=>{
+        let leady=0, uzavreno=0, xsellForms=0, klienti=0, obchody=0, novKc=0, novKs=0;
+        scopeIds.forEach(id=>{
+          const e = getCampaignWeek(c.id, campaignWeekKey1on1, id);
+          leady+=e.leady; uzavreno+=e.uzavreno; xsellForms+=e.xsellForms; klienti+=e.klientiKalkulace; obchody+=e.obchody; novKc+=e.novKc; novKs+=e.novKs;
+        });
+        lines.push(`  ${c.name}: leadů ${leady}, uzavřeno ${uzavreno} (${safePct(uzavreno,leady)}%), X-SELL ${xsellForms} (${safePct(xsellForms,uzavreno)}%), klienti s kalk. ${klienti} (${safePct(klienti,uzavreno)}%), obchody ${obchody}, konverze ${safePct(obchody,klienti)}%, NOV ${fmtNum(novKc)} Kč / ${novKs} ks`);
+      });
+    }
+    if(showExtra){
+      lines.push(``, `Doplňková data:`);
+      EXTRA_FIELDS.forEach(f=>{
+        const v = getExtra(sel, f.id);
+        lines.push(`  ${f.label} (${f.product}): ${v==null?'—':v+' %'}`);
+      });
+      const rizik = getExtra(sel,'rizikova_zivot');
+      const inv = rizik!=null ? (100-rizik) : null;
+      lines.push(`  Investiční složka (Náš život, dopočet): ${inv==null?'—':inv+' %'}`);
+      const note = getExtraNote(sel);
+      if(note) lines.push(`  Poznámka: ${note}`);
+    }
+    lines.push(``, `Poznámky z 1-1:`, draft.note || '(nevyplněno)');
+    if(draft.motivace.checked){
+      lines.push(``, `Domluvena individuální motivace:`, `  Popis: ${draft.motivace.popis||'—'}`, `  Odměna: ${draft.motivace.odmena||'—'}`, `  Termín: ${formatDateCz(draft.motivace.termin)}`);
+    }
+    if(draft.akcniPlan || draft.dusledek){
+      lines.push(``, `Akční plán:`, draft.akcniPlan||'—', `Důsledek při nedodržení: ${draft.dusledek||'—'}`, `Termín: ${formatDateCz(draft.terminAkcniPlan)}`);
+    }
+    if(draft.ukoly.length){
+      lines.push(``, `Úkoly:`);
+      draft.ukoly.forEach(u=>lines.push(`  [${u.kdo}] ${u.text||'(bez popisu)'} — termín: ${formatDateCz(u.termin)}`));
+    }
+    return lines.join('\n');
+  }
+  const zapisText = buildZapisText();
+
+  const ukolyRows = draft.ukoly.map((u,idx)=>`<div class="row" style="margin-bottom:6px;">
+    <select onchange="setDraftUkol('${sel}',${idx},'kdo', this.value)">
+      ${['PZ','Manažer','TL'].map(k=>`<option value="${k}" ${u.kdo===k?'selected':''}>${k}</option>`).join('')}
+    </select>
+    <input type="text" style="flex:1;" value="${escapeHtml(u.text)}" placeholder="co konkrétně" onchange="setDraftUkol('${sel}',${idx},'text', this.value)">
+    <input type="date" style="width:150px;" value="${u.termin||''}" onchange="setDraftUkol('${sel}',${idx},'termin', this.value)">
+    <button class="danger" style="padding:4px 9px;font-size:11px;" onclick="removeDraftUkol('${sel}',${idx})">✕</button>
+  </div>`).join('');
+
+  const oneOnOneCard = `
+  <div class="card">
+    <h2>1-1 — příprava, zápis a výstup</h2>
+    <div class="grid2">
+      <div class="field"><label>Den</label><input type="date" value="${draft.meta.datum}" onchange="setDraftMeta('${sel}','datum', this.value)"></div>
+      <div class="field"><label>Čas</label><input type="text" value="${escapeHtml(draft.meta.cas)}" placeholder="např. 10:00–10:30" onchange="setDraftMeta('${sel}','cas', this.value)"></div>
+      <div class="field"><label>Místo</label><input type="text" value="${escapeHtml(draft.meta.misto)}" placeholder="kancelář, teams..." onchange="setDraftMeta('${sel}','misto', this.value)"></div>
+      <div class="field"><label>Přítomní</label><input type="text" value="${escapeHtml(draft.meta.pritomni)}" placeholder="jména" onchange="setDraftMeta('${sel}','pritomni', this.value)"></div>
+    </div>
+
+    <div class="row" style="margin:6px 0 8px;flex-wrap:wrap;align-items:flex-end;">
+      <div class="field" style="margin:0;">
+        <label>Přidat výstup — období</label>
+        <select id="addBlockSlice1on1">${sliceOptsAdd}</select>
+      </div>
+      <div class="field" style="margin:0;">
+        <label>měsíc</label>
+        <select id="addBlockMonth1on1">${monthOptsAdd}</select>
+      </div>
+      <button onclick="addBlock1on1(document.getElementById('addBlockSlice1on1').value, document.getElementById('addBlockMonth1on1').value)">+ Přidat</button>
+    </div>
+    <div class="row" style="margin-bottom:14px;flex-wrap:wrap;">${blocksChips}</div>
+
+    ${blocks1on1.map(b=>{
+      const label = slice1LabelFor(b.slice,b.month);
+      return `
+    <div class="tablewrap" style="margin-bottom:14px;">
+    <table>
+      <thead><tr><th style="text-align:left;">Produkt — ${label}</th><th>Plán</th><th>Skutečnost</th><th>Zbývá dodat</th><th>Plnění %</th></tr></thead>
+      <tbody>${METRICS.map(m=>{
+        const v = scopedSliceValues(scopeIds,m.id,b.slice,b.month);
+        const z = v.plan-v.actual;
+        const p = plneniPct(v.plan,v.actual);
+        return `<tr><td style="text-align:left;">${m.name}</td><td>${fmt(m.id,v.plan)}</td><td>${fmt(m.id,v.actual)}</td><td><b>${z>=0?fmt(m.id,z):('−'+fmt(m.id,Math.abs(z)))}</b></td><td class="${plneniBgClass(p)}">${p}%</td></tr>`;
+      }).join('')}</tbody>
+    </table>
+    </div>`;
+    }).join('')}
+
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><input type="checkbox" ${showCampaigns1on1?'checked':''} onchange="state._showCampaigns1on1=this.checked; render()"> Zahrnout kampaně/leady do výstupu</label>
+    ${showCampaigns1on1 ? `
+    <div class="row" style="margin-bottom:10px;">
+      <button class="secondary" onclick="state._campaignWeekDate1on1=addDaysStr(state._campaignWeekDate1on1||todayStr(),-7); render()">◀ Předchozí týden</button>
+      <span class="pill">${campaignWeekLabel1on1}</span>
+      <button class="secondary" onclick="state._campaignWeekDate1on1=addDaysStr(state._campaignWeekDate1on1||todayStr(),7); render()">Další týden ▶</button>
+    </div>
+    ${state.campaigns.length ? `
+    <div class="tablewrap" style="margin-bottom:14px;">
+    <table>
+      <thead><tr><th style="text-align:left;">Kampaň/leady</th><th>Leadů</th><th>Uzavřeno</th><th>X-SELL</th><th>Klienti kalk.</th><th>Obchody</th><th>Konverze</th><th>NOV</th></tr></thead>
+      <tbody>${state.campaigns.map(c=>{
+        let leady=0,uzavreno=0,xsellForms=0,klienti=0,obchody=0,novKc=0,novKs=0;
+        scopeIds.forEach(id=>{ const e=getCampaignWeek(c.id,campaignWeekKey1on1,id); leady+=e.leady; uzavreno+=e.uzavreno; xsellForms+=e.xsellForms; klienti+=e.klientiKalkulace; obchody+=e.obchody; novKc+=e.novKc; novKs+=e.novKs; });
+        return `<tr><td style="text-align:left;">${escapeHtml(c.name)}</td><td>${leady}</td><td>${uzavreno}</td><td>${xsellForms}</td><td>${klienti}</td><td>${obchody}</td><td>${safePct(obchody,klienti)}%</td><td>${fmtNum(novKc)} Kč / ${novKs} ks</td></tr>`;
+      }).join('')}</tbody>
+    </table>
+    </div>` : '<p class="empty">Zatím žádná kampaň ani leady (založ je v záložce Kampaně).</p>'}
+    ` : ''}
+
+    <div class="grid2">
+      <div class="field">
+        <label>Příprava na 1-1 (co chci probrat, na co se zaměřit)</label>
+        <textarea rows="4" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;" placeholder="agenda, témata, čísla na která se zeptat..." onchange="setDraftField('${sel}','prep', this.value)">${escapeHtml(draft.prep)}</textarea>
+      </div>
+      <div class="field">
+        <label>Poznámky z 1-1</label>
+        <textarea rows="4" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;" placeholder="co jsme probrali, na čem se domluvili..." onchange="setDraftField('${sel}','note', this.value)">${escapeHtml(draft.note)}</textarea>
+      </div>
+    </div>
+
+    <h3>Domluvena individuální motivace</h3>
+    <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><input type="checkbox" ${draft.motivace.checked?'checked':''} onchange="setDraftMotivace('${sel}','checked', this.checked); render()"> ano, domluvili jsme motivaci</label>
+    ${draft.motivace.checked ? `
+    <div class="grid2">
+      <div class="field"><label>Popis</label><input type="text" value="${escapeHtml(draft.motivace.popis)}" placeholder="za co konkrétně" onchange="setDraftMotivace('${sel}','popis', this.value)"></div>
+      <div class="field"><label>Odměna</label><input type="text" value="${escapeHtml(draft.motivace.odmena)}" placeholder="co za to" onchange="setDraftMotivace('${sel}','odmena', this.value)"></div>
+    </div>
+    <div class="field" style="max-width:200px;"><label>Termín</label><input type="date" value="${draft.motivace.termin}" onchange="setDraftMotivace('${sel}','termin', this.value)"></div>` : ''}
+
+    <h3>Akční plán</h3>
+    <div class="grid2">
+      <div class="field"><label>Co se poradce zavazuje dělat jinak</label><input type="text" value="${escapeHtml(draft.akcniPlan)}" onchange="setDraftField('${sel}','akcniPlan', this.value)"></div>
+      <div class="field"><label>Důsledek při nedodržení</label><input type="text" value="${escapeHtml(draft.dusledek)}" onchange="setDraftField('${sel}','dusledek', this.value)"></div>
+    </div>
+    <div class="field" style="max-width:200px;"><label>Termín</label><input type="date" value="${draft.terminAkcniPlan}" onchange="setDraftField('${sel}','terminAkcniPlan', this.value)"></div>
+
+    <h3>Úkoly</h3>
+    ${ukolyRows}
+    <button class="secondary" onclick="addDraftUkol('${sel}')">+ Přidat úkol</button>
+
+    <div class="row" style="margin-top:16px;margin-bottom:14px;">
+      <button onclick="saveOneOnOneRecord('${sel}')">💾 Uložit záznam do historie</button>
+      <button class="secondary" onclick="render()">🔄 Přegenerovat zápis níže</button>
+      <button class="secondary" onclick="clearOneOnOneDraft('${sel}')">🗑 Vymazat formulář (nový 1-1)</button>
+    </div>
+
+    <h3>Generovaný zápis (kopírovatelný text)</h3>
+    <textarea id="zapisText" class="predtext" style="width:100%;min-height:260px;border:1px solid var(--border);border-radius:6px;" readonly>${zapisText}</textarea>
+    <div class="actions-right">
+      <button onclick="copyPlainText('zapisText')">📋 Kopírovat zápis (text)</button>
+      <button class="secondary" onclick="printText('Zápis 1-1 — ${escapeHtml(a.name)}', document.getElementById('zapisText').value)">🖨 Vytisknout text</button>
+      <button class="secondary" onclick="printOneOnOne('${sel}','prep')">🖨 Příprava — hezký tisk / PDF</button>
+      <button onclick="printOneOnOne('${sel}','zapis')">🖨 Zápis — hezký tisk / PDF</button>
+    </div>
+
+    <h3 style="margin-top:20px;">Historie 1-1</h3>
+
+    ${historyHtml}
+  </div>`;
+
+  return `
+  <div class="card">
+    <h2>Detail poradce${tlMode==='team'?' — Team leader + tým':''}</h2>
+    <div class="row" style="margin-bottom:12px;">
+      <label class="small" style="font-weight:700;">Poradce:</label>
+      <select onchange="state._selAdvisorDetail=this.value; render()">${options}</select>
+      ${statusBadgeHtml(a) || '<span class="badge active">aktivní</span>'}
+      ${tlToggleHtml}
+      <label style="display:flex;align-items:center;gap:6px;margin-left:10px;"><input type="checkbox" ${showExtra?'checked':''} onchange="state._showExtraInDetail=this.checked; render()"> zobrazit i doplňková data</label>
+      <button class="secondary" onclick="copyTable('detailTable')">📋 Kopírovat tabulku (do e-mailu)</button>
+      <button class="secondary" onclick="exportXlsx('detailTable','Detail_'+a.name.replace(/[^a-z0-9]/gi,'_'))">⬇ Export do Excelu</button>
+    </div>
+    <div class="tablewrap">
+    <table id="detailTable">
+      <thead><tr><th style="text-align:left;">Produkt</th>${MONTHS.map(m=>`<th>${m}</th>`).join('')}<th>Celkem rok</th><th>Δ vs. roční plán</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+    <p class="small" style="margin-top:10px;">Δ = rozdíl mezi součtem měsíčních plánů (po přerozděleních) a původně zadaným ročním plánem. Vzniká, pokud tomuto poradci bylo přerozdělením přidáno nebo ubráno.</p>
+  </div>
+
+  ${showExtra ? `
+  <div class="card">
+    <h2>Doplňková data — ${escapeHtml(a.name)}</h2>
+    <table><tbody>${extraRows}</tbody></table>
+    <div class="field" style="margin-top:10px;">
+      <label>Poznámka k doplňkovým datům</label>
+      <input type="text" value="${escapeHtml(getExtraNote(sel))}" placeholder="kontext, proč je číslo jaké je..." onchange="setExtraNote('${sel}', this.value)">
+    </div>
+  </div>` : ''}
+
+  <div class="card">
+    <h2>Kolik zbývá dodat — ${escapeHtml(a.name)}</h2>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th style="text-align:left;">Produkt</th><th>Do konce měsíce (${MONTHS[cm-1]})</th><th>Do konce kvartálu</th><th>Do konce roku</th></tr></thead>
+      <tbody>${zbyvaRows}</tbody>
+    </table>
+    </div>
+  </div>
+
+  ${oneOnOneCard}`;
+}
+
+/* ============== TAB: PLNĚNÍ (SKUTEČNOST) ============== */
+function renderPlneni(){
+  if(state.advisors.length===0) return emptyAdvisorsCard();
+  const mode = state._skutecnostMode || 'month';
+  state._skutecnostMode = mode;
+  const modeSwitch = `<div class="row" style="margin-bottom:12px;">
+    <label class="small" style="font-weight:700;">Zadávat:</label>
+    <button class="${mode==='month'?'':'secondary'}" onclick="state._skutecnostMode='month'; render()">Podle měsíce (všichni × všechny)</button>
+    <button class="${mode==='product'?'':'secondary'}" onclick="state._skutecnostMode='product'; render()">Podle produktu (všichni poradci)</button>
+    <button class="${mode==='advisor'?'':'secondary'}" onclick="state._skutecnostMode='advisor'; render()">Podle poradce (všechny produkty)</button>
+  </div>`;
+  let body;
+  if(mode==='advisor') body = renderPlneniByAdvisor();
+  else if(mode==='product') body = renderPlneniByProduct();
+  else body = renderPlneniByMonth();
+  return modeSwitch + body;
+}
+
+function renderPlneniByMonth(){
+  const cm = state.currentMonth || (new Date()).getMonth()+1;
+  const monthTabs = MONTHS.map((mo,i)=>`<button class="${i+1===cm?'':'secondary'}" style="padding:7px 10px;font-size:12.5px;" onclick="state.currentMonth=${i+1}; saveState(); render()">${mo}</button>`).join('');
+  const orderedMetrics = [...METRICS.filter(m=>m.id!=='podnik'), ...METRICS.filter(m=>m.id==='podnik')];
+
+  const rows = state.advisors.map(ad=>{
+    const cells = orderedMetrics.map(m=>{
+      const act = getActual(ad.id,m.id)[cm-1]||0;
+      const plan = finalMonthly(ad.id,m.id,cm-1);
+      const p = plneniPct(plan, act);
+      const cls = plan>0 ? plneniBgClass(p) : '';
+      const greyed = isEndedAt(ad,cm) || isBeforeStart(ad,cm);
+      return `<td class="${cls}" style="padding:4px;">
+        <input type="number" data-key="skm_${ad.id}_${m.id}" onkeydown="gridTabNav(event)" style="text-align:center;${greyed?'background:#f5f6f7;':''}" value="${act||''}" placeholder="0" onchange="setActualCell('${ad.id}','${m.id}',${cm-1}, this.value); render()">
+        <div class="small" style="text-align:center;margin-top:2px;">plán ${fmtNum(plan)}</div>
+      </td>`;
+    }).join('');
+    return `<tr><td style="text-align:left;">${escapeHtml(ad.name)} ${statusBadgeHtml(ad)}</td>${cells}</tr>`;
+  }).join('');
+
+  return `
+  <div class="card">
+    <h2>Zadání skutečnosti — ${MONTHS[cm-1]}</h2>
+    <div class="row" style="margin-bottom:14px;flex-wrap:wrap;">${monthTabs}</div>
+    <div class="tablewrap">
+    <table class="gridtable">
+      <thead><tr><th style="text-align:left;">Poradce</th>${orderedMetrics.map(m=>`<th>${m.name}</th>`).join('')}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+  </div>`;
+}
+
+function renderPlneniByProduct(){
+  const cm = state.currentMonth || (new Date()).getMonth()+1;
+  const monthOpts = MONTHS.map((m,i)=>`<option value="${i+1}" ${i+1===cm?'selected':''}>${m}</option>`).join('');
+  const qEnd = MONTH_QUARTER[cm-1]*3;
+  const qNum = MONTH_QUARTER[cm-1];
+
+  const selMetric = state._selMetricSkutecnost || METRICS[0].id;
+  state._selMetricSkutecnost = selMetric;
+  const metricOpts = METRICS.map(m=>`<option value="${m.id}" ${m.id===selMetric?'selected':''}>${m.name}</option>`).join('');
+  const m = metric(selMetric);
+
+  const rows = state.advisors.map(ad=>{
+    let planCells='', actualCells='', planToDate=0, actualToDate=0, planYear=0, actualYear=0, planQtd=0, actualQtd=0;
+    for(let i=0;i<12;i++){
+      const p = finalMonthly(ad.id,selMetric,i);
+      const act = getActual(ad.id,selMetric)[i]||0;
+      planYear += p; actualYear += act;
+      if(i+1<=cm){ planToDate+=p; actualToDate+=act; }
+      if(i+1>=cm && i+1<=qEnd){ planQtd+=p; actualQtd+=act; }
+      const greyed = isEndedAt(ad,i+1) || isBeforeStart(ad,i+1);
+      const curCls = (i+1===cm) ? ' cur-month' : '';
+      planCells += `<td class="small${curCls}" style="color:#8a97a3;">${fmtNum(p)}</td>`;
+      actualCells += `<td class="${curCls.trim()}"><input type="number" data-key="skp_${ad.id}_${i}" onkeydown="gridTabNav(event)" style="${greyed?'background:#f5f6f7;':''}" value="${act||''}" placeholder="0" onchange="setActualCell('${ad.id}','${selMetric}',${i}, this.value); render()"></td>`;
+    }
+    const zbyvaMesic = finalMonthly(ad.id,selMetric,cm-1) - (getActual(ad.id,selMetric)[cm-1]||0);
+    const zbyvaKvartal = planQtd - actualQtd;
+    const zbyvaRok = planYear - actualYear;
+    const zbyvaMesicuDoRoka = 12 - cm;
+    const potrebaMesic = zbyvaMesicuDoRoka>0 ? zbyvaRok/zbyvaMesicuDoRoka : 0;
+    const procento = planToDate>0 ? (actualToDate/planToDate*100) : (actualToDate>0?100:0);
+    const rozdilKDatu = actualToDate - planToDate;
+    return `
+      <tr style="border-top:2px solid var(--border);"><td rowspan="2" style="vertical-align:middle;">${escapeHtml(ad.name)} ${statusBadgeHtml(ad)}</td>
+        ${planCells}
+        <td rowspan="2" style="vertical-align:middle;">${fmtNum(planYear)}</td>
+        <td rowspan="2" style="vertical-align:middle;">${fmtNum(actualToDate)}</td>
+        <td rowspan="2" style="vertical-align:middle;" class="${rozdilKDatu>=0?'sum-ok':'sum-bad'}">${rozdilKDatu>=0?'+':''}${fmtNum(rozdilKDatu)}<br><span class="small">(${Math.round(procento)}%)</span></td>
+        <td rowspan="2" style="vertical-align:middle;" class="${zbyvaMesic<=0?'sum-ok':''}">${zbyvaMesic>=0?fmtNum(zbyvaMesic):('−'+fmtNum(Math.abs(zbyvaMesic)))}</td>
+        <td rowspan="2" style="vertical-align:middle;" class="${zbyvaKvartal<=0?'sum-ok':''}">${zbyvaKvartal>=0?fmtNum(zbyvaKvartal):('−'+fmtNum(Math.abs(zbyvaKvartal)))}</td>
+        <td rowspan="2" style="vertical-align:middle;"><b>${zbyvaRok>=0?fmtNum(zbyvaRok):('−'+fmtNum(Math.abs(zbyvaRok)))}</b></td>
+        <td rowspan="2" style="vertical-align:middle;">${zbyvaMesicuDoRoka>0?fmtNum(potrebaMesic):'-'}</td>
+      </tr>
+      <tr>${actualCells}</tr>`;
+  }).join('');
+
+  return `
+  <div class="card">
+    <h2>Zadání skutečnosti — ${m.name} <span class="small">(${m.unit})</span></h2>
+    <div class="row" style="margin-bottom:12px;">
+      <label class="small" style="font-weight:700;">Produkt:</label>
+      <select onchange="state._selMetricSkutecnost=this.value; render()">${metricOpts}</select>
+      <label class="small" style="font-weight:700;margin-left:10px;">Aktuální měsíc:</label>
+      <select onchange="state.currentMonth=Number(this.value); saveState(); render()">${monthOpts}</select>
+      <span class="pill">Q${qNum} = ${MONTHS[qEnd-3]}–${MONTHS[qEnd-1]}</span>
+    </div>
+    <div class="tablewrap">
+    <table class="gridtable">
+      <thead><tr>
+        <th style="text-align:left;">Poradce</th>${MONTHS.map((mo,i)=>`<th class="${i+1===cm?'cur-month':''}">${mo}</th>`).join('')}
+        <th>Roční plán</th><th>Splněno k ${MONTHS[cm-1]}</th><th>Rozdíl k datu</th><th>Zbývá do konce měsíce</th><th>Zbývá do konce Q${qNum}</th><th>Zbývá do konce roku</th><th>Potřeba/měs.</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+    <p class="small" style="margin-top:10px;">Šedý řádek = plán, pod ním zadáváš skutečnost (u Podnik. rizik i záporně).</p>
+  </div>`;
+}
+
+function renderPlneniByAdvisor(){
+  const cm = state.currentMonth || (new Date()).getMonth()+1;
+  const monthOpts = MONTHS.map((m,i)=>`<option value="${i+1}" ${i+1===cm?'selected':''}>${m}</option>`).join('');
+  const qEnd = MONTH_QUARTER[cm-1]*3;
+  const qNum = MONTH_QUARTER[cm-1];
+
+  const sel = state._selAdvisorSkutecnost || state.advisors[0].id;
+  state._selAdvisorSkutecnost = sel;
+  const a = advisor(sel);
+  const advisorOpts = state.advisors.map(x=>`<option value="${x.id}" ${x.id===sel?'selected':''}>${escapeHtml(x.name)}</option>`).join('');
+
+  const rows = METRICS.map(m=>{
+    let planCells='', actualCells='', planToDate=0, actualToDate=0, planYear=0, actualYear=0, planQtd=0, actualQtd=0;
+    for(let i=0;i<12;i++){
+      const p = finalMonthly(sel,m.id,i);
+      const act = getActual(sel,m.id)[i]||0;
+      planYear += p; actualYear += act;
+      if(i+1<=cm){ planToDate+=p; actualToDate+=act; }
+      if(i+1>=cm && i+1<=qEnd){ planQtd+=p; actualQtd+=act; }
+      planCells += `<td class="small${i+1===cm?' cur-month':''}" style="color:#8a97a3;">${fmtNum(p)}</td>`;
+      actualCells += `<td class="${i+1===cm?'cur-month':''}"><input type="number" data-key="ska_${m.id}_${i}" onkeydown="gridTabNav(event)" value="${act||''}" placeholder="0" onchange="setActualCell('${sel}','${m.id}',${i}, this.value); render()"></td>`;
+    }
+    const zbyvaMesic = finalMonthly(sel,m.id,cm-1) - (getActual(sel,m.id)[cm-1]||0);
+    const zbyvaKvartal = planQtd - actualQtd;
+    const zbyvaRok = planYear - actualYear;
+    const zbyvaMesicuDoRoka = 12 - cm;
+    const potrebaMesic = zbyvaMesicuDoRoka>0 ? zbyvaRok/zbyvaMesicuDoRoka : 0;
+    const procento = planToDate>0 ? (actualToDate/planToDate*100) : (actualToDate>0?100:0);
+    const rozdilKDatu = actualToDate - planToDate;
+    return `
+      <tr style="border-top:2px solid var(--border);"><td rowspan="2" style="vertical-align:middle;">${m.name}<br><span class="small">(${m.unit})</span></td>
+        ${planCells}
+        <td rowspan="2" style="vertical-align:middle;">${fmtNum(planYear)}</td>
+        <td rowspan="2" style="vertical-align:middle;">${fmtNum(actualToDate)}</td>
+        <td rowspan="2" style="vertical-align:middle;" class="${rozdilKDatu>=0?'sum-ok':'sum-bad'}">${rozdilKDatu>=0?'+':''}${fmtNum(rozdilKDatu)}<br><span class="small">(${Math.round(procento)}%)</span></td>
+        <td rowspan="2" style="vertical-align:middle;" class="${zbyvaMesic<=0?'sum-ok':''}">${zbyvaMesic>=0?fmtNum(zbyvaMesic):('−'+fmtNum(Math.abs(zbyvaMesic)))}</td>
+        <td rowspan="2" style="vertical-align:middle;" class="${zbyvaKvartal<=0?'sum-ok':''}">${zbyvaKvartal>=0?fmtNum(zbyvaKvartal):('−'+fmtNum(Math.abs(zbyvaKvartal)))}</td>
+        <td rowspan="2" style="vertical-align:middle;"><b>${zbyvaRok>=0?fmtNum(zbyvaRok):('−'+fmtNum(Math.abs(zbyvaRok)))}</b></td>
+        <td rowspan="2" style="vertical-align:middle;">${zbyvaMesicuDoRoka>0?fmtNum(potrebaMesic):'-'}</td>
+      </tr>
+      <tr>${actualCells}</tr>`;
+  }).join('');
+
+  return `
+  <div class="card">
+    <h2>Zadání skutečnosti — ${escapeHtml(a.name)} ${statusBadgeHtml(a)}</h2>
+    <div class="row" style="margin-bottom:12px;">
+      <label class="small" style="font-weight:700;">Poradce:</label>
+      <select onchange="state._selAdvisorSkutecnost=this.value; render()">${advisorOpts}</select>
+      <label class="small" style="font-weight:700;margin-left:10px;">Aktuální měsíc:</label>
+      <select onchange="state.currentMonth=Number(this.value); saveState(); render()">${monthOpts}</select>
+      <span class="pill">Q${qNum} = ${MONTHS[qEnd-3]}–${MONTHS[qEnd-1]}</span>
+    </div>
+    <div class="tablewrap">
+    <table class="gridtable">
+      <thead><tr>
+        <th style="text-align:left;">Produkt</th>${MONTHS.map((mo,i)=>`<th class="${i+1===cm?'cur-month':''}">${mo}</th>`).join('')}
+        <th>Roční plán</th><th>Splněno k ${MONTHS[cm-1]}</th><th>Rozdíl k datu</th><th>Zbývá do konce měsíce</th><th>Zbývá do konce Q${qNum}</th><th>Zbývá do konce roku</th><th>Potřeba/měs.</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+    <p class="small" style="margin-top:10px;">Tady vidíš a zadáváš najednou všech 6 produktů u jednoho poradce. Pro zadávání jednoho produktu za celý tým přepni nahoře na „Podle produktu".</p>
+  </div>`;
+}
+
+/* ============== TAB: REPORT (TÝMOVÝ) ============== */
+function renderReport(){
+  if(state.advisors.length===0) return emptyAdvisorsCard();
+  const teamAdvisors = filteredAdvisors(state._teamFilter);
+  const teamAdvisorsActive = activeOnly(teamAdvisors);
+  const cm = state._reportMonth || state.currentMonth || (new Date()).getMonth()+1;
+  state._reportMonth = cm;
+  const qEnd = MONTH_QUARTER[cm-1]*3;
+  const qNum = MONTH_QUARTER[cm-1];
+
+  const selMetric = state._selMetricPlneni || METRICS[0].id;
+  state._selMetricPlneni = selMetric;
+  const metricOpts = METRICS.map(m=>`<option value="${m.id}" ${m.id===selMetric?'selected':''}>${m.name}</option>`).join('');
+  let teamPlan=0, teamActualToDate=0, teamZbyvaRok=0, teamPlanToDate=0, teamZbyvaMesic=0, teamZbyvaKvartal=0;
+  const teamRows = teamAdvisors.map(ad=>{
+    let planYear=0, actualYear=0, actualToDate=0, planToDate=0, planQtd=0, actualQtd=0;
+    for(let i=0;i<12;i++){
+      const p = finalMonthly(ad.id,selMetric,i);
+      const act = getActual(ad.id,selMetric)[i]||0;
+      planYear+=p; actualYear+=act;
+      if(i+1<=cm){ planToDate+=p; actualToDate += act; }
+      if(i+1>=cm && i+1<=qEnd){ planQtd+=p; actualQtd += act; }
+    }
+    const zbyvaMesic = finalMonthly(ad.id,selMetric,cm-1) - (getActual(ad.id,selMetric)[cm-1]||0);
+    const zbyvaKvartal = planQtd - actualQtd;
+    const zbyvaRok = planYear - actualYear;
+    const zbyvaMesicu = 12-cm;
+    const potrebaMesic = zbyvaMesicu>0 ? zbyvaRok/zbyvaMesicu : 0;
+    const proc = planToDate>0 ? Math.round(actualToDate/planToDate*100) : (actualToDate>0?100:0);
+    const procMesicPct = plneniPct(finalMonthly(ad.id,selMetric,cm-1), getActual(ad.id,selMetric)[cm-1]||0);
+    const procKvartalPct = plneniPct(planQtd, actualQtd);
+    const procRokPct = plneniPct(planYear, actualYear);
+    teamPlan+=planYear; teamActualToDate+=actualToDate; teamZbyvaRok+=zbyvaRok; teamPlanToDate+=planToDate; teamZbyvaMesic+=zbyvaMesic; teamZbyvaKvartal+=zbyvaKvartal;
+    return `<tr><td>${escapeHtml(ad.name)} ${statusBadgeHtml(ad)}</td><td>${fmtNum(planYear)}</td><td>${fmtNum(actualToDate)}</td><td class="${plneniBgClass(proc)}" style="${plneniBgStyle(proc)}">${proc}%</td>
+      <td class="${plneniBgClass(procMesicPct)}" style="${plneniBgStyle(procMesicPct)}">${zbyvaMesic>=0?fmtNum(zbyvaMesic):('−'+fmtNum(Math.abs(zbyvaMesic)))}</td>
+      <td class="${plneniBgClass(procKvartalPct)}" style="${plneniBgStyle(procKvartalPct)}">${zbyvaKvartal>=0?fmtNum(zbyvaKvartal):('−'+fmtNum(Math.abs(zbyvaKvartal)))}</td>
+      <td class="${plneniBgClass(procRokPct)}" style="${plneniBgStyle(procRokPct)}"><b>${zbyvaRok>=0?fmtNum(zbyvaRok):('−'+fmtNum(Math.abs(zbyvaRok)))}</b></td>
+      <td>${zbyvaMesicu>0?fmtNum(potrebaMesic):'-'}</td></tr>`;
+  }).join('');
+  const teamProc = teamPlanToDate>0 ? Math.round(teamActualToDate/teamPlanToDate*100) : 0;
+
+  // ---- Souhrnná tabulka pro e-mail: PLÁN / SKUTEČNOST / ZBÝVÁ / PLNĚNÍ % pro všechny produkty a poradce, podle zvoleného období ----
+  const slice = state._selSlice || 'ytd_month';
+  state._selSlice = slice;
+  const qStart = qEnd-2, qN = qNum;
+  const sliceLabels = {
+    ytd_month:   `od ledna do konce ${MONTHS[cm-1]}`,
+    month:       `${MONTHS[cm-1]}`,
+    ytd_quarter: `od ledna do konce Q${qN} (${MONTHS[qStart-1]}–${MONTHS[qEnd-1]})`,
+    quarter:     `Q${qN} (${MONTHS[qStart-1]}–${MONTHS[qEnd-1]})`,
+  };
+  const sliceOpts = Object.entries({ytd_month:'Od začátku roku do konce měsíce', month:'Jen tento měsíc', ytd_quarter:'Od začátku roku do konce kvartálu', quarter:'Jen tento kvartál'})
+    .map(([k,label])=>`<option value="${k}" ${k===slice?'selected':''}>${label}</option>`).join('');
+
+  const KC_METRICS = METRICS.filter(m=>['zivot','domov','auto'].includes(m.id));
+  const KS_METRICS = METRICS.filter(m=>['ucty','xsell'].includes(m.id));
+  const subHeadersFor = (list)=>list.map(m=>`<th style="text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.name}</th>`).join('');
+
+  function blockTable(id, title, color, metricList, cellFn){
+    const rows = teamAdvisorsActive.map(ad=>{
+      const vals = metricList.map(m=>sliceValues(ad.id,m.id,slice,cm));
+      const cells = vals.map((v,idx)=>cellFn(v, metricList[idx].id)).join('');
+      return `<tr><td style="text-align:left;white-space:nowrap;font-size:12px;padding-left:10px;padding-right:14px;">${escapeHtml(advisorLabel(ad))}</td>${cells}</tr>`;
+    }).join('');
+    return `<div class="tablewrap" style="margin-bottom:32px;">
+      <table id="${id}" style="table-layout:auto;width:auto;">
+        <thead>
+          <tr><th colspan="${metricList.length+1}" style="text-align:center;background:${color};">${title} — ${sliceLabels[slice]}</th></tr>
+          <tr><th style="text-align:left;white-space:nowrap;font-size:12px;padding-left:10px;padding-right:14px;">Poradce</th>${subHeadersFor(metricList)}</tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }
+
+  const planTable = blockTable('emailPlanTable', 'PLÁN', 'var(--dark)', KC_METRICS, (v,mId)=>`<td class="blk-plan" style="text-align:center;width:100px;overflow:hidden;font-size:12px;">${fmt(mId,v.plan)}</td>`);
+  const actualTable = blockTable('emailActualTable', 'SKUTEČNOST', 'var(--dark)', KC_METRICS, (v,mId)=>{
+    const p = plneniPct(v.plan, v.actual);
+    return `<td class="${plneniBgClass(p)}" style="${plneniBgStyle(p)}text-align:center;width:100px;overflow:hidden;font-size:12px;">${fmt(mId,v.actual)}</td>`;
+  });
+  const zbyvaTable = blockTable('emailZbyvaTable', 'ZBÝVÁ DODAT', 'var(--dark)', KC_METRICS, (v,mId)=>{
+    const z = v.plan-v.actual;
+    const p = plneniPct(v.plan, v.actual);
+    return `<td class="${plneniBgClass(p)}" style="${plneniBgStyle(p)}text-align:center;width:100px;overflow:hidden;font-size:12px;">${z>=0?fmt(mId,z):('−'+fmt(mId,Math.abs(z)))}</td>`;
+  });
+  const plneniTable = blockTable('emailPlneniTable', 'PLNĚNÍ V %', 'var(--dark)', KC_METRICS, (v,mId)=>{
+    const p = plneniPct(v.plan, v.actual);
+    return `<td class="${plneniBgClass(p)}" style="${plneniBgStyle(p)}text-align:center;width:100px;overflow:hidden;font-size:12px;">${p}%</td>`;
+  });
+
+  // Bankovní účty + X-SELL — počty kusů, jiná logika než Kč produkty, proto zvlášť
+  const ksPlanTable = blockTable('emailKsPlanTable', 'PLÁN (ks)', 'var(--dark)', KS_METRICS, (v,mId)=>`<td class="blk-plan" style="text-align:center;width:100px;overflow:hidden;font-size:12px;">${fmt(mId,v.plan)}</td>`);
+  const ksActualTable = blockTable('emailKsActualTable', 'SKUTEČNOST (ks)', 'var(--dark)', KS_METRICS, (v,mId)=>{
+    const p = plneniPct(v.plan, v.actual);
+    return `<td class="${plneniBgClass(p)}" style="${plneniBgStyle(p)}text-align:center;width:100px;overflow:hidden;font-size:12px;">${fmt(mId,v.actual)}</td>`;
+  });
+  const ksZbyvaTable = blockTable('emailKsZbyvaTable', 'ZBÝVÁ DODAT (ks)', 'var(--dark)', KS_METRICS, (v,mId)=>{
+    const z = v.plan-v.actual;
+    const p = plneniPct(v.plan, v.actual);
+    return `<td class="${plneniBgClass(p)}" style="${plneniBgStyle(p)}text-align:center;width:100px;overflow:hidden;font-size:12px;">${z>=0?fmt(mId,z):('−'+fmt(mId,Math.abs(z)))}</td>`;
+  });
+  const ksPlneniTable = blockTable('emailKsPlneniTable', 'PLNĚNÍ V % (ks)', 'var(--dark)', KS_METRICS, (v,mId)=>{
+    const p = plneniPct(v.plan, v.actual);
+    return `<td class="${plneniBgClass(p)}" style="${plneniBgStyle(p)}text-align:center;width:100px;overflow:hidden;font-size:12px;">${p}%</td>`;
+  });
+  const ksTablesHtml = `
+  <details class="card">
+    <summary style="cursor:pointer;font-weight:700;color:var(--dark);">Bankovní účty a X-SELL — samostatně (klikni pro rozbalení)</summary>
+    <p class="small" style="margin:10px 0;">Počty kusů, rozdělené rovnoměrně po měsících (ne podle % křivky). Období: ${sliceLabels[slice]}.</p>
+    <div class="row" style="margin-bottom:12px;">
+      <button class="secondary" onclick="copyAllTables(['emailKsPlneniTable','emailKsActualTable','emailKsZbyvaTable','emailKsPlanTable'])">📋 Kopírovat všechny 4</button>
+    </div>
+    ${ksPlneniTable}${ksActualTable}${ksZbyvaTable}${ksPlanTable}
+    <div class="row">
+      <button class="secondary" onclick="copyTable('emailKsPlneniTable')">📋 Jen Plnění %</button>
+      <button class="secondary" onclick="copyTable('emailKsActualTable')">📋 Jen Skutečnost</button>
+      <button class="secondary" onclick="copyTable('emailKsZbyvaTable')">📋 Jen Zbývá dodat</button>
+      <button class="secondary" onclick="copyTable('emailKsPlanTable')">📋 Jen Plán</button>
+    </div>
+  </details>`;
+
+  // Pojištění podnikatelských rizik — samostatná tabulka, mimo hlavní přehled
+  const podnikRows = teamAdvisorsActive.map(ad=>{
+    const v = sliceValues(ad.id,'podnik',slice,cm);
+    const z = v.plan-v.actual;
+    const p = plneniPct(v.plan, v.actual);
+    return `<tr><td style="text-align:left;white-space:nowrap;font-size:12px;padding-left:10px;padding-right:14px;">${escapeHtml(advisorLabel(ad))}</td><td class="${plneniBgClass(p)}" style="${plneniBgStyle(p)}text-align:center;width:100px;overflow:hidden;font-size:12px;">${p}%</td><td class="${plneniBgClass(p)}" style="${plneniBgStyle(p)}text-align:center;width:100px;overflow:hidden;font-size:12px;">${fmt('podnik',v.actual)}</td><td class="${plneniBgClass(p)}" style="${plneniBgStyle(p)}text-align:center;width:100px;overflow:hidden;font-size:12px;">${z>=0?fmt('podnik',z):('−'+fmt('podnik',Math.abs(z)))}</td><td class="blk-plan" style="text-align:center;width:100px;overflow:hidden;font-size:12px;">${fmt('podnik',v.plan)}</td></tr>`;
+  }).join('');
+  const podnikTableHtml = `
+  <details class="card">
+    <summary style="cursor:pointer;font-weight:700;color:var(--dark);">Pojištění podnikatelských rizik — samostatně (klikni pro rozbalení)</summary>
+    <p class="small" style="margin:10px 0;">Tenhle produkt je nárůst kmene (může být i v mínusu), proto je mimo hlavní souhrnnou tabulku. Období: ${sliceLabels[slice]}.</p>
+    <div class="tablewrap">
+    <table id="emailPodnikTable" style="table-layout:auto;width:auto;">
+      <thead><tr><th style="text-align:left;white-space:nowrap;font-size:12px;padding-left:10px;padding-right:14px;">Poradce</th><th style="text-align:center;width:100px;font-size:12px;">Plnění %</th><th style="text-align:center;width:100px;font-size:12px;">Skutečnost</th><th style="text-align:center;width:100px;font-size:12px;">Zbývá dodat</th><th style="text-align:center;width:100px;font-size:12px;">Plán</th></tr></thead>
+      <tbody>${podnikRows}</tbody>
+    </table>
+    </div>
+    <div class="actions-right"><button class="secondary" onclick="copyTable('emailPodnikTable')">📋 Kopírovat</button></div>
+  </details>`;
+
+  const emailTableHtml = `
+  <div class="card" style="zoom:1.25;">
+    <h2 style="font-size:18px;">📧 Hlavní report — souhrn pro e-mail</h2>
+    <div class="row" style="margin-bottom:12px;">
+      <label class="small" style="font-weight:700;">Období:</label>
+      <select onchange="state._selSlice=this.value; render()">${sliceOpts}</select>
+      <button class="secondary" onclick="copyAllTables(['emailPlneniTable','emailActualTable','emailZbyvaTable','emailPlanTable'])">📋 Kopírovat všechny 4 tabulky</button>
+    </div>
+    ${plneniTable}
+    ${actualTable}
+    ${zbyvaTable}
+    ${planTable}
+    <div class="row">
+      <button class="secondary" onclick="copyTable('emailPlneniTable')">📋 Jen Plnění %</button>
+      <button class="secondary" onclick="copyTable('emailActualTable')">📋 Jen Skutečnost</button>
+      <button class="secondary" onclick="copyTable('emailZbyvaTable')">📋 Jen Zbývá dodat</button>
+      <button class="secondary" onclick="copyTable('emailPlanTable')">📋 Jen Plán</button>
+    </div>
+  </div>
+  ${ksTablesHtml}
+  ${podnikTableHtml}`;
+
+  // ---- Predikce (kopírovatelný text) ----
+  const weekNum = isoWeekNumber(new Date());
+  const novacekCount = teamAdvisorsActive.filter(a=>isNovacek(a)).length;
+  const coreCount = teamAdvisorsActive.length - novacekCount;
+  const quarterEndDate = new Date(Number(state.year)||new Date().getFullYear(), qEnd, 0);
+  const weeksLeftInQuarter = Math.max(1, Math.ceil((quarterEndDate - new Date())/(7*86400000)));
+  const zbQ = mId => {
+    let plan=0, actual=0;
+    teamAdvisorsActive.forEach(ad=>{ const v=sliceValues(ad.id,mId,'ytd_quarter',cm); plan+=v.plan; actual+=v.actual; });
+    const remaining = plan-actual;
+    return Math.round(remaining/weeksLeftInQuarter);
+  };
+  const predText = [
+    `Predikce OS ${state.teamName} ${weekNum}. týden`,
+    `Poradci:\t${coreCount}+${novacekCount}`,
+    `Naše auto:\t${fmtNum(zbQ('auto'))} Kč`,
+    `Náš domov:\t${fmtNum(zbQ('domov'))} Kč`,
+    `Náš život:\t${fmtNum(zbQ('zivot'))} Kč`,
+    `X-SELL:\t${fmtNum(zbQ('xsell'))} ks`,
+    `Konta:\t${fmtNum(zbQ('ucty'))} ks`,
+    `Pohovory:\t${state.weeklyManual.pohovory||0}`,
+    `Kontakty k oslovení:\t${state.weeklyManual.kontakty||0}`,
+  ].join('\n');
+
+  const predikceHtml = `
+  <div class="card">
+    <h2>Predikce (kopírovatelný text)</h2>
+    <div class="row" style="margin-bottom:10px;">
+      <div class="field" style="margin:0;"><label>Název týmu/oblasti</label><input type="text" style="width:180px;" value="${escapeHtml(state.teamName)}" onchange="state.teamName=this.value; saveState(); render()"></div>
+      <div class="field" style="margin:0;"><label>Pohovory</label><input type="number" min="0" style="width:80px;" value="${state.weeklyManual.pohovory||0}" onchange="state.weeklyManual.pohovory=Number(this.value)||0; saveState(); render()"></div>
+      <div class="field" style="margin:0;"><label>Kontakty k oslovení</label><input type="number" min="0" style="width:80px;" value="${state.weeklyManual.kontakty||0}" onchange="state.weeklyManual.kontakty=Number(this.value)||0; saveState(); render()"></div>
+    </div>
+    <textarea id="predikceText" class="predtext" style="width:100%;min-height:210px;border:1px solid var(--border);border-radius:6px;" readonly>${predText}</textarea>
+    <div class="actions-right">
+      <button onclick="copyPlainText('predikceText')">📋 Kopírovat text</button>
+    </div>
+    <p class="small" style="margin-top:10px;">Zbývá dodat do konce kvartálu, rozpočítáno na ${weeksLeftInQuarter} zbývajících týdnů. Ukončení poradci se nepočítají.</p>
+  </div>`;
+
+  return `
+  ${emailTableHtml}
+  <div class="card">
+    <h2>Žebříček podle jednoho produktu</h2>
+    <div class="row" style="margin-bottom:12px;">
+      <label class="small" style="font-weight:700;">Produkt:</label>
+      <select onchange="state._selMetricPlneni=this.value; render()">${metricOpts}</select>
+      <label class="small" style="font-weight:700;margin-left:10px;">Zobrazit:</label>
+      <select onchange="state._teamFilter=this.value; render()">${teamFilterOptionsHtml()}</select>
+      <label class="small" style="font-weight:700;margin-left:10px;">Měsíc:</label>
+      <select onchange="state._reportMonth=Number(this.value); render()">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i+1===cm?'selected':''}>${m}</option>`).join('')}</select>
+      <span class="pill">Q${qNum}</span>
+      <button class="secondary" onclick="copyTable('plneniTeamTable')">📋 Kopírovat</button>
+      <button class="secondary" onclick="exportXlsx('plneniTeamTable','Report')">⬇ Excel</button>
+    </div>
+    <div class="tablewrap">
+    <table id="plneniTeamTable">
+      <thead><tr><th style="text-align:left;">Poradce</th><th>Roční plán</th><th>Splněno k ${MONTHS[cm-1]}</th><th>% plnění k datu</th><th>Zbývá do konce měsíce</th><th>Zbývá do konce Q${qNum}</th><th>Zbývá do konce roku</th><th>Potřeba/měs.</th></tr></thead>
+      <tbody>${teamRows}</tbody>
+      <tfoot><tr class="total"><td>Celkem tým</td><td>${fmtNum(teamPlan)}</td><td>${fmtNum(teamActualToDate)}</td><td>${teamProc}%</td>
+        <td>${fmtNum(teamZbyvaMesic)}</td><td>${fmtNum(teamZbyvaKvartal)}</td><td>${fmtNum(teamZbyvaRok)}</td><td>${cm<12?fmtNum(teamZbyvaRok/(12-cm)):'-'}</td></tr></tfoot>
+    </table>
+    </div>
+    <p class="small" style="margin-top:10px;">Zahrnuje i ukončené poradce (odznak „ukončen"), ať vidíš jejich plnění za dobu, co v týmu byli.</p>
+  </div>
+  ${predikceHtml}`;
+}
+
+/* ============== TAB: DASHBOARD ============== */
+function renderDashboard(){
+  if(state.advisors.length===0) return emptyAdvisorsCard();
+  const teamAdvisors = filteredAdvisors(state._teamFilter);
+  const allowReal = !state._teamFilter || state._teamFilter==='all';
+  const cm = state.currentMonth || (new Date()).getMonth()+1;
+  const monthOpts = MONTHS.map((m,i)=>`<option value="${i+1}" ${i+1===cm?'selected':''}>${m}</option>`).join('');
+
+  // KPI karty za celý tým, jeden produkt = jedna karta
+  const cards = METRICS.map(m=>{
+    let planYear=0, actualToDate=0, planToDate=0;
+    const planThisMonth = teamPlanMonthly(m.id,cm-1,teamAdvisors,allowReal);
+    for(let i=0;i<12;i++){
+      const p = teamPlanMonthly(m.id,i,teamAdvisors,allowReal);
+      planYear+=p;
+      if(i+1<=cm){
+        planToDate+=p;
+        teamAdvisors.forEach(ad=>{ actualToDate += (getActual(ad.id,m.id)[i]||0); });
+      }
+    }
+    const proc = planToDate>0 ? Math.round(actualToDate/planToDate*100) : (actualToDate>0?100:0);
+    const cls = plneniClass(proc);
+    const realNote = (allowReal && state.realTeamPlan[m.id]) ? ' 📌' : '';
+    return `<div class="card" style="flex:1;min-width:170px;margin-bottom:0;">
+      <div class="small" style="font-weight:700;color:var(--dark);">${m.name}</div>
+      <div style="font-size:22px;font-weight:800;margin:4px 0;" class="${cls}">${proc}%</div>
+      <div class="small" style="white-space:nowrap;">plán ${MONTHS[cm-1]}: ${fmt(m.id,planThisMonth)}${realNote}</div>
+    </div>`;
+  }).join('');
+
+  // Matice poradci x produkty — % plnění k datu, barevně
+  const rows = teamAdvisors.map(ad=>{
+    const cells = METRICS.map(m=>{
+      let planToDate=0, actualToDate=0, planYear=0, actualYear=0;
+      for(let i=0;i<12;i++){
+        const p = finalMonthly(ad.id,m.id,i);
+        const act = getActual(ad.id,m.id)[i]||0;
+        planYear+=p; actualYear+=act;
+        if(i+1<=cm){ planToDate+=p; actualToDate+=act; }
+      }
+      const proc = planToDate>0 ? Math.round(actualToDate/planToDate*100) : (actualToDate>0?100:0);
+      const cls = plneniClass(proc);
+      const zbyva = planYear-actualYear;
+      return `<td>
+        <div class="${cls}" style="font-size:15px;">${proc}%</div>
+        <div class="small">zbývá ${zbyva>=0?fmtNum(zbyva):('−'+fmtNum(Math.abs(zbyva)))}</div>
+      </td>`;
+    }).join('');
+    const ended = ad.endMonth && cm>ad.endMonth;
+    return `<tr>
+      <td>${escapeHtml(ad.name)} ${statusBadgeHtml(ad)}
+        <div><button class="secondary" style="padding:3px 8px;font-size:11px;margin-top:4px;" onclick="state._selAdvisorDetail='${ad.id}'; switchTab('detail')">Detail →</button></div>
+      </td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  // Zbývá dodat za celou skupinu — do konce měsíce / kvartálu / roku, po produktech
+  const qEndD = MONTH_QUARTER[cm-1]*3;
+  const zbyvaGroupRows = METRICS.map(m=>{
+    let planMesic=0, actualMesic=0, planKvartal=0, actualKvartal=0, planRok=0, actualRok=0;
+    planMesic = teamPlanMonthly(m.id,cm-1,teamAdvisors,allowReal);
+    for(let i=cm-1;i<qEndD;i++) planKvartal += teamPlanMonthly(m.id,i,teamAdvisors,allowReal);
+    for(let i=0;i<12;i++) planRok += teamPlanMonthly(m.id,i,teamAdvisors,allowReal);
+    teamAdvisors.forEach(ad=>{
+      actualMesic += (getActual(ad.id,m.id)[cm-1]||0);
+      for(let i=cm-1;i<qEndD;i++) actualKvartal += (getActual(ad.id,m.id)[i]||0);
+      for(let i=0;i<12;i++) actualRok += (getActual(ad.id,m.id)[i]||0);
+    });
+    const zbyvaMesic = planMesic-actualMesic, zbyvaKvartal = planKvartal-actualKvartal, zbyvaRok = planRok-actualRok;
+    const fz = z => z>=0 ? fmt(m.id,z) : ('−'+fmt(m.id,Math.abs(z)));
+    const clsMesic = plneniBgClass(plneniPct(planMesic, actualMesic));
+    const clsKvartal = plneniBgClass(plneniPct(planKvartal, actualKvartal));
+    const clsRok = plneniBgClass(plneniPct(planRok, actualRok));
+    return `<tr><td style="text-align:left;">${m.name}</td><td class="${clsMesic}">${fz(zbyvaMesic)}</td><td class="${clsKvartal}">${fz(zbyvaKvartal)}</td><td class="${clsRok}"><b>${fz(zbyvaRok)}</b></td></tr>`;
+  }).join('');
+  const zbyvaGroupHtml = `
+  <div class="card">
+    <h2>Zbývá dodat za celou skupinu</h2>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th style="text-align:left;">Produkt</th><th>Do konce měsíce (${MONTHS[cm-1]})</th><th>Do konce kvartálu</th><th>Do konce roku</th></tr></thead>
+      <tbody>${zbyvaGroupRows}</tbody>
+    </table>
+    </div>
+  </div>`;
+
+  return `
+  <div class="row" style="margin-bottom:16px;">
+    <label class="small" style="font-weight:700;">Aktuální měsíc:</label>
+    <select onchange="state.currentMonth=Number(this.value); saveState(); render()">${monthOpts}</select>
+    <label class="small" style="font-weight:700;margin-left:10px;">Zobrazit:</label>
+    <select onchange="state._teamFilter=this.value; render()">${teamFilterOptionsHtml()}</select>
+  </div>
+  ${teamAdvisors.length===0 ? '<p class="empty">V tomhle výběru nejsou žádní poradci.</p>' : `
+  <div class="row" style="margin-bottom:18px;align-items:stretch;">${cards}</div>
+  ${zbyvaGroupHtml}
+  <div class="card">
+    <h2>Všichni poradci × všechny produkty — od ledna do konce ${MONTHS[cm-1]}</h2>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th style="text-align:left;">Poradce</th>${METRICS.map(m=>`<th>${m.name}<br><span class="small" style="color:#cdd;">${m.unit}</span></th>`).join('')}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+    <p class="small" style="margin-top:10px;">🟢 90 %+ splněno · 🟠 70–89 % · 🔴 pod 70 %. Klikni „Detail →" u poradce pro měsíční rozpad.</p>
+  </div>`}`;
+}
+
+/* ============== TAB: DENNÍ EVIDENCE ============== */
+function renderDenniEvidence(){
+  const dateStr = state._selDailyDate || todayStr();
+  state._selDailyDate = dateStr;
+  const day = getManagerDay(dateStr);
+  const habitList = getHabitList(), weeklyList = getWeeklyList(), fieldList = getFieldList();
+  const editMode = !!state._editChecklist;
+
+  const nav = `<div class="row" style="margin-bottom:16px;">
+    <button onclick="state._selDailyDate=todayStr(); render()">Dnes</button>
+    <button class="secondary" onclick="state._selDailyDate=yesterdayStr(); render()">Včerejšek</button>
+    <input type="date" value="${dateStr}" onchange="state._selDailyDate=this.value; render()">
+    <span class="pill" style="text-transform:capitalize;">${dateLabel(dateStr)}</span>
+    <button class="secondary" onclick="state._editChecklist=!state._editChecklist; render()">${editMode?'✓ Hotovo s úpravou':'✎ Upravit body checklistu'}</button>
+  </div>`;
+
+  const editorRow = (kind,item)=>`<div class="row" style="margin-bottom:4px;">
+    <input type="text" value="${escapeHtml(item.label)}" style="flex:1;" onchange="renameChecklistItem('${kind}','${item.id}', this.value)">
+    <button class="danger" style="padding:4px 9px;font-size:11px;" onclick="removeChecklistItem('${kind}','${item.id}')">✕</button>
+  </div>`;
+  const editorHtml = !editMode ? '' : `
+  <div class="card" style="border-left:4px solid var(--cyan);">
+    <h2>Úprava bodů checklistu</h2>
+    <div class="grid2">
+      <div>
+        <h3>Denní návyky</h3>
+        ${habitList.map(h=>editorRow('habits',h)).join('')}
+        <button class="secondary" style="margin-top:6px;" onclick="addChecklistItem('habits')">+ Přidat bod</button>
+      </div>
+      <div>
+        <h3>Týdenní návyky</h3>
+        ${weeklyList.map(h=>editorRow('weekly',h)).join('')}
+        <button class="secondary" style="margin-top:6px;" onclick="addChecklistItem('weekly')">+ Přidat bod</button>
+      </div>
+    </div>
+    <h3 style="margin-top:16px;">Sloupce denních aktivit poradců</h3>
+    ${fieldList.map(f=>editorRow('fields',f)).join('')}
+    <button class="secondary" style="margin-top:6px;" onclick="addChecklistItem('fields')">+ Přidat sloupec</button>
+    <p class="small" style="margin-top:10px;">Odebrání bodu nesmaže historii už uložených dní, jen ho přestane nabízet pro nové zadávání.</p>
+  </div>`;
+
+  const habitsHtml = habitList.map(h=>{
+    const checked = !!day.habits[h.id];
+    return `<label style="display:flex;gap:8px;align-items:center;padding:4px 0;"><input type="checkbox" ${checked?'checked':''} onchange="toggleHabit('${dateStr}','${h.id}',false); render()"> ${escapeHtml(h.label)}</label>`;
+  }).join('');
+  const weeklyHtml = weeklyList.map(h=>{
+    const checked = !!day.weekly[h.id];
+    return `<label style="display:flex;gap:8px;align-items:center;padding:4px 0;"><input type="checkbox" ${checked?'checked':''} onchange="toggleHabit('${dateStr}','${h.id}',true); render()"> ${escapeHtml(h.label)}</label>`;
+  }).join('');
+  const advisorOpts = ['<option value="">— nevybráno —</option>'].concat(state.advisors.map(a=>`<option value="${a.id}" ${day.personOfDay===a.id?'selected':''}>${escapeHtml(a.name)}</option>`)).join('');
+
+  const managerCard = `
+  <div class="card">
+    <h2>Moje atomové návyky</h2>
+    <div class="grid2">
+      <div>
+        <h3>Denně</h3>
+        ${habitsHtml || '<p class="empty">Žádné body — přidej je přes „Upravit body checklistu".</p>'}
+      </div>
+      <div>
+        <h3>Týdně</h3>
+        ${weeklyHtml || '<p class="empty">Žádné body.</p>'}
+        <h3 style="margin-top:16px;">Člověk dne</h3>
+        <div class="field">
+          <label>Komu dnes věnuji cílenou pozornost (podle toho, kdo je pod plánem)</label>
+          <select onchange="setPersonOfDay('${dateStr}', this.value)">${advisorOpts}</select>
+        </div>
+        <div class="field">
+          <label>Poznámka — co konkrétně dnes udělám</label>
+          <input type="text" value="${escapeHtml(day.personOfDayNote||'')}" placeholder="co konkrétně dnes udělám" onchange="setPersonNote('${dateStr}', this.value)">
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  if(state.advisors.length===0) return nav + editorHtml + managerCard + emptyAdvisorsCard();
+
+  const visibleAdvisors = state.advisors.filter(a=>!a.hiddenDaily);
+  const hiddenAdvisors = state.advisors.filter(a=>a.hiddenDaily);
+  const rows = visibleAdvisors.map(ad=>{
+    const e = getDailyEntry(ad.id, dateStr);
+    const cells = fieldList.map((f,fi)=>{
+      const cil = e[f.id+'_cil'];
+      const real = e[f.id];
+      const cls = (cil!=null && cil!=='' && real!=null && real!=='') ? (Number(real)>=Number(cil)?'bg-ok':(Number(real)>=Number(cil)*0.7?'bg-warn':'bg-bad')) : '';
+      const groupBg = fi%2===0 ? '#f7f8fa' : '#ffffff';
+      const borderR = 'border-right:2px solid var(--border);';
+      return `<td style="padding:2px;background:${groupBg};"><input type="number" min="0" value="${cil||''}" placeholder="cíl" title="Cíl (${f.label})" style="text-align:center;margin-bottom:2px;" onchange="setDailyField('${ad.id}','${dateStr}','${f.id}_cil', this.value); render()"></td>
+        <td class="${cls}" style="padding:2px;${cls?'':`background:${groupBg};`}${borderR}"><input type="number" min="0" value="${real||''}" placeholder="realita" title="Realita (${f.label})" style="text-align:center;" onchange="setDailyField('${ad.id}','${dateStr}','${f.id}', this.value); render()"></td>`;
+    }).join('');
+    return `<tr><td>${escapeHtml(ad.name)} <button class="secondary" style="padding:2px 8px;font-size:11px;" onclick="toggleHiddenDaily('${ad.id}')" title="Nezadávám s ním denní aktivity">Skrýt</button></td>${cells}<td><input type="text" value="${escapeHtml(e.note||'')}" placeholder="poznámka" style="min-width:160px;" onchange="setDailyField('${ad.id}','${dateStr}','note', this.value)"></td></tr>`;
+  }).join('');
+  const hiddenNote = hiddenAdvisors.length ? `<p class="small" style="margin-top:10px;">Skryto: ${hiddenAdvisors.map(a=>`${escapeHtml(a.name)} <button class="secondary" style="padding:1px 7px;font-size:11px;" onclick="toggleHiddenDaily('${a.id}')">Zobrazit</button>`).join(' · ')}</p>` : '';
+
+  return `
+  ${nav}
+  ${editorHtml}
+  ${managerCard}
+  <div class="card">
+    <h2>Denní aktivity poradců</h2>
+    <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th rowspan="2" style="text-align:left;">Poradce</th>${fieldList.map((f,fi)=>`<th colspan="2" style="background:${fi%2===0?'#0077a3':'var(--dark)'};border-right:2px solid var(--border);">${escapeHtml(f.label)}</th>`).join('')}<th rowspan="2" style="text-align:left;">Poznámka</th></tr>
+        <tr>${fieldList.map((f,fi)=>`<th class="small" style="background:${fi%2===0?'#f7f8fa':'#fff'};color:#556;">Cíl</th><th class="small" style="background:${fi%2===0?'#f7f8fa':'#fff'};color:#556;border-right:2px solid var(--border);">Realita</th>`).join('')}</tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+    ${hiddenNote}
+    <p class="small" style="margin-top:10px;">Tip: ráno přepni na „Včerejšek" a rovnou uvidíš, co se včera zadalo.</p>
+  </div>`;
+}
+
+/* ============== TAB: DOPLŇKOVÁ DATA ============== */
+function renderDoplnkova(){
+  if(state.advisors.length===0) return emptyAdvisorsCard();
+  const rows = state.advisors.map(ad=>{
+    const cells = EXTRA_FIELDS.map(f=>{
+      const v = getExtra(ad.id, f.id);
+      return `<td><input type="number" min="0" max="100" value="${v==null?'':v}" placeholder="—" onchange="setExtra('${ad.id}','${f.id}', this.value); render()"></td>`;
+    }).join('');
+    const rizik = getExtra(ad.id,'rizikova_zivot');
+    const investicni = rizik!=null ? (100-rizik) : null;
+    return `<tr><td>${escapeHtml(ad.name)}</td>${cells}<td class="small">${investicni!=null?investicni+' %':'—'}</td></tr>`;
+  }).join('');
+
+  const noteRows = state.advisors.map(ad=>`
+    <div class="field">
+      <label>${escapeHtml(ad.name)}</label>
+      <input type="text" value="${escapeHtml(getExtraNote(ad.id))}" placeholder="poznámka k doplňkovým datům (kontext, proč je číslo jaké je...)" onchange="setExtraNote('${ad.id}', this.value)">
+    </div>`).join('');
+
+  return `
+  <div class="card">
+    <h2>Doplňková data</h2>
+    <p class="small" style="margin-bottom:12px;">Nepravidelné/podpůrné ukazatele — zadávají se příležitostně (např. jednou za měsíc nebo kvartál), nejsou součástí automatického plánu ani „Zbývá dodat".</p>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th style="text-align:left;">Poradce</th>${EXTRA_FIELDS.map(f=>`<th>${f.label}<br><span class="small" style="color:#cdd;">${f.product}</span></th>`).join('')}<th>Investiční složka<br><span class="small" style="color:#cdd;">Náš život (dopočet)</span></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+    <h3 style="margin-top:16px;">Poznámky k doplňkovým datům</h3>
+    ${noteRows}
+    <p class="small" style="margin-top:10px;">Investiční složka se dopočítává automaticky jako 100 % − riziková složka.</p>
+  </div>`;
+}
+
+/* ============== TAB: KAMPANĚ / LEADY ============== */
+function renderKampane(){
+  const teamAdvisors = filteredAdvisors(state._teamFilter);
+  const manageHtml = `
+  <div class="card">
+    <h2>Kampaně a leady — správa</h2>
+    <p class="small" style="margin-bottom:10px;">Každá kampaň nebo skupina leadů má vlastní jméno a vlastní týdenní data. Datum reportingu se u kampaní typicky posouvá o týden dopředu na jedné straně a zkracuje na druhé (rolující okno) — appka to neřeší automaticky, jen ukládá to, co zadáš pro daný týden, takže si týdny mezi sebou můžeš porovnávat.</p>
+    <div class="tablewrap" style="margin-bottom:10px;">
+    ${state.campaigns.length ? state.campaigns.map(c=>`
+      <div class="row" style="margin-bottom:6px;">
+        <span class="pill">${c.kind==='lead'?'Leady':'Kampaň'}</span>
+        <input type="text" value="${escapeHtml(c.name)}" style="max-width:260px;" onchange="renameCampaign('${c.id}', this.value)">
+        <button class="danger" style="padding:4px 10px;font-size:12px;" onclick="removeCampaign('${c.id}')">Smazat</button>
+      </div>`).join('') : '<p class="empty">Zatím žádná kampaň ani leady.</p>'}
+    </div>
+    <div class="row">
+      <input type="text" id="newCampaignName" placeholder="Název nové kampaně/leadů" style="max-width:260px;">
+      <select id="newCampaignKind"><option value="kampan">Kampaň</option><option value="lead">Leady</option></select>
+      <button onclick="addCampaign(document.getElementById('newCampaignName').value, document.getElementById('newCampaignKind').value); document.getElementById('newCampaignName').value='';">+ Přidat</button>
+    </div>
+  </div>`;
+
+  if(state.campaigns.length===0) return manageHtml;
+
+  const selId = state._selCampaign && state.campaigns.find(c=>c.id===state._selCampaign) ? state._selCampaign : state.campaigns[0].id;
+  state._selCampaign = selId;
+  const campaign = state.campaigns.find(c=>c.id===selId);
+  const campaignOpts = state.campaigns.map(c=>`<option value="${c.id}" ${c.id===selId?'selected':''}>${escapeHtml(c.name)}</option>`).join('');
+
+  const weekDateStr = state._campaignWeekDate || todayStr();
+  state._campaignWeekDate = weekDateStr;
+  const weekKey = weekKeyFor(weekDateStr);
+  const prevWeekKey = weekKeyFor(addDaysStr(weekDateStr, -7));
+  const d = new Date(weekDateStr+'T00:00:00');
+  const weekLabel = `${isoWeekNumber(d)}. týden ${d.getFullYear()}`;
+
+  let sumLeady=0, sumUzavreno=0, sumXsell=0, sumKlienti=0, sumObchody=0, sumNovKc=0, sumNovKs=0;
+  const rows = teamAdvisors.map(ad=>{
+    const e = getCampaignWeek(selId, weekKey, ad.id);
+    const prevE = (state.campaignWeekly[selId] && state.campaignWeekly[selId][prevWeekKey] && state.campaignWeekly[selId][prevWeekKey][ad.id]) || null;
+    sumLeady+=e.leady; sumUzavreno+=e.uzavreno; sumXsell+=e.xsellForms; sumKlienti+=e.klientiKalkulace; sumObchody+=e.obchody; sumNovKc+=e.novKc; sumNovKs+=e.novKs;
+
+    const pickup = safePct(e.uzavreno, e.leady);
+    const xsellPct = safePct(e.xsellForms, e.uzavreno);
+    const kalkPct = safePct(e.klientiKalkulace, e.uzavreno);
+    const konvPct = safePct(e.obchody, e.klientiKalkulace);
+
+    const prevPickup = prevE ? safePct(prevE.uzavreno, prevE.leady) : null;
+    const prevXsell = prevE ? safePct(prevE.xsellForms, prevE.uzavreno) : null;
+    const prevKonv = prevE ? safePct(prevE.obchody, prevE.klientiKalkulace) : null;
+
+    const inp = (field, val) => `<input type="number" min="0" style="width:70px;" value="${val||''}" placeholder="0" onchange="setCampaignField('${selId}','${weekKey}','${ad.id}','${field}', this.value); render()">`;
+
+    return `<tr>
+      <td style="text-align:left;">${escapeHtml(ad.name)}</td>
+      <td>${inp('leady', e.leady)}</td>
+      <td>${inp('uzavreno', e.uzavreno)}</td>
+      <td class="${pickupBgClass(pickup)}">${pickup}%${trendArrow(pickup,prevPickup)}</td>
+      <td>${inp('xsellForms', e.xsellForms)}</td>
+      <td class="${xsellBgClass(xsellPct)}">${xsellPct}%${trendArrow(xsellPct,prevXsell)}</td>
+      <td>${inp('klientiKalkulace', e.klientiKalkulace)}</td>
+      <td class="${kalkulaceBgClass(kalkPct)}">${kalkPct}%</td>
+      <td>${inp('obchody', e.obchody)}</td>
+      <td class="${konverzeBgClass(konvPct)}">${konvPct}%${trendArrow(konvPct,prevKonv)}</td>
+      <td>${inp('novKc', e.novKc)}</td>
+      <td>${inp('novKs', e.novKs)}</td>
+    </tr>`;
+  }).join('');
+
+  const totalPickup = safePct(sumUzavreno, sumLeady);
+  const totalXsell = safePct(sumXsell, sumUzavreno);
+  const totalKonvZprac = safePct(sumObchody, sumUzavreno); // konverze na zpracované úkoly
+  const totalKonvVse = safePct(sumObchody, sumLeady);      // konverze na všechny úkoly (leady)
+
+  const emailRows = teamAdvisors.map(ad=>{
+    const e = getCampaignWeek(selId, weekKey, ad.id);
+    const pickup = safePct(e.uzavreno, e.leady);
+    const xsellPct = safePct(e.xsellForms, e.uzavreno);
+    const kalkPct = safePct(e.klientiKalkulace, e.uzavreno);
+    const konvPct = safePct(e.obchody, e.klientiKalkulace);
+    return `<tr>
+      <td style="text-align:left;">${escapeHtml(advisorLabel(ad))}</td>
+      <td>${e.leady}</td><td>${e.uzavreno}</td><td class="${pickupBgClass(pickup)}" style="${pickupBgStyle(pickup)}">${pickup}%</td>
+      <td>${e.xsellForms}</td><td class="${xsellBgClass(xsellPct)}" style="${xsellBgStyle(xsellPct)}">${xsellPct}%</td>
+      <td>${e.klientiKalkulace}</td><td class="${kalkulaceBgClass(kalkPct)}" style="${kalkulaceBgStyle(kalkPct)}">${kalkPct}%</td>
+      <td>${e.obchody}</td><td class="${konverzeBgClass(konvPct)}" style="${konverzeBgStyle(konvPct)}">${konvPct}%</td>
+      <td>${fmtNum(e.novKc)} Kč</td><td>${e.novKs} ks</td>
+    </tr>`;
+  }).join('');
+
+  return manageHtml + `
+  <div class="card">
+    <h2>Týdenní data — ${escapeHtml(campaign.name)}</h2>
+    <div class="row" style="margin-bottom:14px;">
+      <label class="small" style="font-weight:700;">Kampaň/leady:</label>
+      <select onchange="state._selCampaign=this.value; render()">${campaignOpts}</select>
+      <button class="secondary" onclick="state._campaignWeekDate=addDaysStr(state._campaignWeekDate||todayStr(),-7); render()">◀ Předchozí týden</button>
+      <span class="pill">${weekLabel}</span>
+      <button class="secondary" onclick="state._campaignWeekDate=addDaysStr(state._campaignWeekDate||todayStr(),7); render()">Další týden ▶</button>
+      <button class="secondary" onclick="state._campaignWeekDate=todayStr(); render()">Dnešní týden</button>
+    </div>
+    <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th style="text-align:left;">Poradce</th><th>Počet leadů</th><th>Uzavřeno</th><th>Pick-up rate</th>
+        <th>X-SELL form.</th><th>X-SELL %</th><th>Klienti s kalk.</th><th>Klienti s kalk. %</th>
+        <th>Obchody uzavřené</th><th>Konverze %</th><th>NOV (Kč)</th><th>NOV (ks)</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr class="total">
+        <td>Celkem</td><td>${sumLeady}</td><td>${sumUzavreno}</td><td class="${pickupBgClass(totalPickup)}">${totalPickup}%</td>
+        <td>${sumXsell}</td><td class="${xsellBgClass(totalXsell)}">${totalXsell}%</td>
+        <td>${sumKlienti}</td><td class="${kalkulaceBgClass(safePct(sumKlienti,sumUzavreno))}">${safePct(sumKlienti,sumUzavreno)}%</td>
+        <td>${sumObchody}</td><td class="${konverzeBgClass(safePct(sumObchody,sumKlienti))}">${safePct(sumObchody,sumKlienti)}%</td>
+        <td>${fmtNum(sumNovKc)} Kč</td><td>${sumNovKs} ks</td>
+      </tr></tfoot>
+    </table>
+    </div>
+    <p class="small" style="margin-top:10px;">▲/▼ vedle % ukazuje, jestli se poradce oproti minulému týdnu (${prevWeekKey}) zlepšil nebo zhoršil. Barvy: pick-up rate a % plnění stejně jako jinde v appce (90 %+/70–89 %/míň), X-SELL % podle 30/15, klienti s kalkulací podle 50/25, konverze podle 15/10.</p>
+  </div>
+
+  <div class="card">
+    <h2>Souhrn pro e-mail — ${escapeHtml(campaign.name)} (${weekLabel})</h2>
+    <div class="row" style="margin-bottom:12px;">
+      <button class="secondary" onclick="copyTable('kampanEmailTable')">📋 Kopírovat tabulku (do e-mailu)</button>
+      <button class="secondary" onclick="exportXlsx('kampanEmailTable','Kampan_'+campaign.name.replace(/[^a-z0-9]/gi,'_'))">⬇ Export do Excelu</button>
+    </div>
+    <div class="tablewrap">
+    <table id="kampanEmailTable">
+      <thead><tr>
+        <th style="text-align:left;">Poradce</th><th>Počet leadů</th><th>Uzavřeno</th><th>Pick-up rate</th>
+        <th>X-SELL form.</th><th>X-SELL %</th><th>Klienti s kalk.</th><th>Klienti s kalk. %</th>
+        <th>Obchody uzavřené</th><th>Konverze %</th><th>NOV (Kč)</th><th>NOV (ks)</th>
+      </tr></thead>
+      <tbody>${emailRows}</tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Souhrn kampaně (agregát za tým)</h2>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th style="text-align:left;">Ukazatel</th><th>Hodnota</th></tr></thead>
+      <tbody>
+        <tr><td style="text-align:left;">Počet úkolů (leadů)</td><td>${sumLeady}</td></tr>
+        <tr><td style="text-align:left;">Počet zpracovaných úkolů</td><td>${sumUzavreno}</td></tr>
+        <tr><td style="text-align:left;">Pick-up rate</td><td class="${pickupBgClass(totalPickup)}">${totalPickup}%</td></tr>
+        <tr><td style="text-align:left;">Konverze na zpracované úkoly (obchody/zpracováno)</td><td class="${konverzeBgClass(totalKonvZprac)}">${totalKonvZprac}%</td></tr>
+        <tr><td style="text-align:left;">Konverze na všechny úkoly (obchody/leady)</td><td class="${konverzeBgClass(totalKonvVse)}">${totalKonvVse}%</td></tr>
+        <tr><td style="text-align:left;">NOV celkem (Kč)</td><td>${fmtNum(sumNovKc)} Kč</td></tr>
+        <tr><td style="text-align:left;">NOV celkem (ks)</td><td>${sumNovKs} ks</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="small" style="margin-top:10px;">Rozpad NOV podle konkrétního produktu a řešitele zatím appka nedělá — v tabulce výš vidíš NOV po poradcích (řešitelích), podle produktu zatím ne. Pokud to potřebuješ rozepsat i po produktech, řekni a přidám sloupce.</p>
+  </div>`;
+}
+
+
+function prepareForEmailCopy(node, sourceTable){
+  // Šířka podle délky textu (ne podle vykresleného rozměru na obrazovce) — díky tomu jde appka
+  // na obrazovce zvětšit/zmenšit, aniž by se cokoliv změnilo na tom, co se zkopíruje do e-mailu.
+  // Outlook (vykresluje přes Word) běžně ignoruje CSS white-space:nowrap na buňkách tabulky —
+  // <nobr> kolem obsahu je spolehlivější trik napříč e-mailovými klienty.
+  let widths = [];
+  if(sourceTable){
+    const rows = Array.from(sourceTable.rows);
+    const refRow = rows.reduce((best,r)=> r.cells.length>best.cells.length ? r : best, rows[0] || {cells:[]});
+    Array.from(refRow.cells || []).forEach((cell,idx)=>{
+      const len = (cell.textContent||'').trim().length;
+      widths[idx] = idx===0 ? Math.max(160, len*14 + 40) : Math.max(50, len*10 + 30);
+    });
+  }
+  node.style.border = '1px solid #9aa7b0';
+  node.style.borderCollapse = 'collapse';
+  // Pokud tabulka sama deklaruje pevnou šířku (Report tabulky), nenech ji "napnout" na 100 % šířky e-mailu
+  if(node.style.width) node.style.maxWidth = node.style.width;
+  node.querySelectorAll('tr').forEach(row=>{
+    Array.from(row.children).forEach((cell,idx)=>{
+      cell.style.whiteSpace = 'nowrap';
+      cell.style.border = '1px solid #9aa7b0';
+      cell.style.height = '36px';
+      cell.style.boxSizing = 'border-box';
+      cell.style.fontSize = '12px';
+      if(!cell.hasAttribute('colspan') && widths[idx]) cell.style.width = widths[idx]+'px';
+      if(!cell.querySelector('nobr')){
+        const nobr = document.createElement('nobr');
+        while(cell.firstChild) nobr.appendChild(cell.firstChild);
+        cell.appendChild(nobr);
+      }
+    });
+  });
+  return node;
+}
+function copyAllTables(tableIds){
+  const wrapper = document.createElement('div');
+  wrapper.style.position='fixed'; wrapper.style.left='-9999px'; wrapper.style.top='0';
+  tableIds.forEach((id,i)=>{
+    const t = document.getElementById(id);
+    if(!t) return;
+    wrapper.appendChild(prepareForEmailCopy(t.cloneNode(true), t));
+    if(i<tableIds.length-1) wrapper.appendChild(document.createElement('br'));
+  });
+  document.body.appendChild(wrapper);
+  const range = document.createRange();
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  range.selectNode(wrapper);
+  sel.addRange(range);
+  try{
+    document.execCommand('copy');
+    toast('Všechny tabulky zkopírovány — vlož je (Ctrl+V) do e-mailu');
+  }catch(e){
+    try{
+      const html = wrapper.innerHTML;
+      const text = wrapper.innerText;
+      const item = new ClipboardItem({
+        'text/html': new Blob([html], {type:'text/html'}),
+        'text/plain': new Blob([text], {type:'text/plain'})
+      });
+      navigator.clipboard.write([item]).then(()=>toast('Všechny tabulky zkopírovány — vlož je (Ctrl+V) do e-mailu'));
+    }catch(err){ toast('Kopírování se nepodařilo, zkus tabulky kopírovat jednotlivě'); }
+  }
+  sel.removeAllRanges();
+  document.body.removeChild(wrapper);
+}
+function copyTable(tableId){
+  const orig = document.getElementById(tableId);
+  if(!orig) return;
+  const wrapper = document.createElement('div');
+  wrapper.style.position='fixed'; wrapper.style.left='-9999px'; wrapper.style.top='0';
+  const table = prepareForEmailCopy(orig.cloneNode(true), orig);
+  wrapper.appendChild(table);
+  document.body.appendChild(wrapper);
+  const range = document.createRange();
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  range.selectNode(table);
+  sel.addRange(range);
+  try{
+    document.execCommand('copy');
+    toast('Tabulka zkopírována — vlož ji (Ctrl+V) do e-mailu');
+  }catch(e){
+    // fallback: Clipboard API
+    try{
+      const html = table.outerHTML;
+      const text = table.innerText;
+      const item = new ClipboardItem({
+        'text/html': new Blob([html], {type:'text/html'}),
+        'text/plain': new Blob([text], {type:'text/plain'})
+      });
+      navigator.clipboard.write([item]).then(()=>toast('Tabulka zkopírována — vlož ji (Ctrl+V) do e-mailu'));
+    }catch(err){ toast('Kopírování se nepodařilo, zkus označit tabulku ručně'); }
+  }
+  sel.removeAllRanges();
+  document.body.removeChild(wrapper);
+}
+function exportXlsx(tableId, filename){
+  const table = document.getElementById(tableId);
+  if(!table || typeof XLSX==='undefined'){ toast('Export se nepodařilo načíst, zkus to znovu'); return; }
+  const wb = XLSX.utils.table_to_book(table, {sheet:'Plán'});
+  XLSX.writeFile(wb, (filename||'plan')+'_'+state.year+'.xlsx');
+}
+
+/* ============== START ============== */
+/* loadState() se teď volá až po přihlášení (viz afterLogin) */
+</script>
+</body>
+</html>
